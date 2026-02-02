@@ -1,0 +1,131 @@
+import { auth } from "@/lib/auth";
+import { listContentFiles, getFileContent } from "@/lib/octokit";
+import { parseMarkdown } from "@/lib/markdown";
+import { PostMetadataSchema } from "@/lib/schemas";
+import clientPromise from "@/lib/mongodb";
+import { NextRequest, NextResponse } from "next/server";
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { owner, repo, name, description } = await request.json();
+
+    if (!owner || !repo) {
+      return NextResponse.json(
+        { error: "Owner and repo are required" },
+        { status: 400 }
+      );
+    }
+
+    const accessToken = session.access_token as string;
+    const userId = session.user.id;
+    const repoId = `${owner}/${repo}`;
+
+    // 1. Listar archivos de contenido
+    const files = await listContentFiles(accessToken, owner, repo);
+
+    if (files.length === 0) {
+      return NextResponse.json({
+        message: "No content files found",
+        imported: 0,
+      });
+    }
+
+    // 2. Conectar a MongoDB
+    const client = await clientPromise;
+    const db = client.db("astro-cms");
+    const postsCollection = db.collection("posts");
+
+    let imported = 0;
+    const errors: string[] = [];
+
+    // 3. Procesar cada archivo
+    for (const filePath of files) {
+      try {
+        const fileData = await getFileContent(accessToken, owner, repo, filePath);
+
+        if (!fileData) {
+          errors.push(`Could not fetch ${filePath}`);
+          continue;
+        }
+
+        // 4. Parsear el markdown
+        const { metadata, content } = parseMarkdown(fileData.content);
+
+        // 5. Validar metadata
+        const validationResult = PostMetadataSchema.safeParse(metadata);
+
+        if (!validationResult.success) {
+          errors.push(`Invalid metadata in ${filePath}: ${validationResult.error.message}`);
+          continue;
+        }
+
+        // 6. Upsert en MongoDB
+        await postsCollection.updateOne(
+          { userId, repoId, filePath },
+          {
+            $set: {
+              sha: fileData.sha,
+              metadata: validationResult.data,
+              content,
+              status: "synced",
+              lastCommitAt: new Date(),
+              updatedAt: new Date(),
+            },
+            $setOnInsert: {
+              userId,
+              repoId,
+              filePath,
+              createdAt: new Date(),
+            },
+          },
+          { upsert: true }
+        );
+
+        imported++;
+      } catch (error) {
+        console.error(`Error processing ${filePath}:`, error);
+        errors.push(`Error processing ${filePath}`);
+      }
+    }
+
+    // 7. Guardar/actualizar el proyecto
+    const projectsCollection = db.collection("projects");
+    await projectsCollection.updateOne(
+      { userId, repoId },
+      {
+        $set: {
+          name: name || repo,
+          description: description || "",
+          postsCount: imported,
+          lastSync: new Date(),
+          updatedAt: new Date(),
+        },
+        $setOnInsert: {
+          userId,
+          repoId,
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+
+    return NextResponse.json({
+      message: `Import complete`,
+      imported,
+      total: files.length,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (error) {
+    console.error("Import error:", error);
+    return NextResponse.json(
+      { error: "Failed to import content" },
+      { status: 500 }
+    );
+  }
+}
