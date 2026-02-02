@@ -21,6 +21,42 @@ export async function listUserRepos(accessToken: string) {
 }
 
 /**
+ * Verifica si un repositorio usa Astro
+ */
+export async function isAstroRepo(
+  accessToken: string,
+  owner: string,
+  repo: string
+): Promise<boolean> {
+  const octokit = getOctokit(accessToken);
+  
+  try {
+    // Intentar obtener package.json
+    const { data } = await octokit.repos.getContent({
+      owner,
+      repo,
+      path: "package.json",
+    });
+
+    if (!Array.isArray(data) && data.type === "file") {
+      const content = Buffer.from(data.content, "base64").toString("utf-8");
+      const packageJson = JSON.parse(content);
+      
+      // Verificar si tiene astro en dependencies o devDependencies
+      const deps = packageJson.dependencies || {};
+      const devDeps = packageJson.devDependencies || {};
+      
+      return "astro" in deps || "astro" in devDeps;
+    }
+    
+    return false;
+  } catch (error) {
+    // Si no hay package.json, no es un proyecto Astro
+    return false;
+  }
+}
+
+/**
  * Obtiene el contenido de un archivo del repositorio
  */
 export async function getFileContent(

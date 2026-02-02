@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import clientPromise from "@/lib/mongodb";
+import clientPromise, { DB_NAME, getUserCollectionName } from "@/lib/mongodb";
 import { NextResponse } from "next/server";
 
 // GET - Listar proyectos importados del usuario
@@ -12,11 +12,11 @@ export async function GET() {
     }
 
     const client = await clientPromise;
-    const db = client.db("astro-cms");
-    const projectsCollection = db.collection("projects");
+    const db = client.db(DB_NAME);
+    const userCollection = db.collection(getUserCollectionName(session.user.id));
 
-    const projects = await projectsCollection
-      .find({ userId: session.user.id })
+    const projects = await userCollection
+      .find({ type: "project" })
       .sort({ updatedAt: -1 })
       .toArray();
 

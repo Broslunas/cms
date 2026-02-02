@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { listUserRepos } from "@/lib/octokit";
+import { listUserRepos, isAstroRepo } from "@/lib/octokit";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -22,7 +22,19 @@ export async function GET() {
 
     const repos = await listUserRepos(accessToken);
 
-    return NextResponse.json(repos);
+    // Filtrar solo repositorios que usan Astro
+    const astroRepos = [];
+    
+    for (const repo of repos) {
+      const [owner, repoName] = repo.full_name.split("/");
+      const usesAstro = await isAstroRepo(accessToken, owner, repoName);
+      
+      if (usesAstro) {
+        astroRepos.push(repo);
+      }
+    }
+
+    return NextResponse.json(astroRepos);
   } catch (error) {
     console.error("Error fetching repos:", error);
     return NextResponse.json(

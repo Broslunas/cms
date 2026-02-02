@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import clientPromise from "@/lib/mongodb";
+import clientPromise, { DB_NAME, getUserCollectionName } from "@/lib/mongodb";
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
@@ -16,13 +16,14 @@ export async function GET(request: Request) {
     const repoId = searchParams.get("repoId");
 
     const client = await clientPromise;
-    const db = client.db("astro-cms");
-    const postsCollection = db.collection("posts");
+    const db = client.db(DB_NAME);
+    const userCollection = db.collection(getUserCollectionName(session.user.id));
 
     // Si se solicita un post específico por ID
     if (postId) {
-      const post = await postsCollection.findOne({
+      const post = await userCollection.findOne({
         _id: new ObjectId(postId),
+        type: "post",
         userId: session.user.id,
       });
 
@@ -34,12 +35,12 @@ export async function GET(request: Request) {
     }
 
     // Si se filtran por repositorio
-    const filter: any = { userId: session.user.id };
+    const filter: any = { type: "post", userId: session.user.id };
     if (repoId) {
       filter.repoId = repoId;
     }
 
-    const posts = await postsCollection
+    const posts = await userCollection
       .find(filter)
       .sort({ updatedAt: -1 })
       .toArray();

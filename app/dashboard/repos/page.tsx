@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import clientPromise from "@/lib/mongodb";
+import clientPromise, { DB_NAME, getUserCollectionName } from "@/lib/mongodb";
 
 export default async function ReposPage({
   searchParams,
@@ -23,10 +23,11 @@ export default async function ReposPage({
 
   // Obtener posts del repositorio
   const client = await clientPromise;
-  const db = client.db("astro-cms");
-  const posts = await db
-    .collection("posts")
-    .find({ userId: session.user.id, repoId })
+  const db = client.db(DB_NAME);
+  const userCollection = db.collection(getUserCollectionName(session.user.id));
+  
+  const posts = await userCollection
+    .find({ type: "post", repoId })
     .sort({ updatedAt: -1 })
     .toArray();
 

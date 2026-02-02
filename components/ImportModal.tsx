@@ -86,9 +86,14 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
       <div className="bg-zinc-900 rounded-lg border border-zinc-800 w-full max-w-3xl max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-zinc-800">
-          <h2 className="text-xl font-semibold text-white">
-            Importar Repositorio
-          </h2>
+          <div>
+            <h2 className="text-xl font-semibold text-white">
+              Importar Repositorio
+            </h2>
+            <p className="text-sm text-zinc-500 mt-1">
+              Solo repositorios con Astro
+            </p>
+          </div>
           <button
             onClick={onClose}
             className="text-zinc-400 hover:text-white transition-colors"
@@ -117,7 +122,8 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
             </div>
           ) : repos.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-zinc-400">No se encontraron repositorios</p>
+              <p className="text-zinc-400">No se encontraron repositorios de Astro</p>
+              <p className="text-zinc-500 text-sm mt-2">Asegúrate de tener repositorios con Astro en tu cuenta de GitHub</p>
             </div>
           ) : (
             <div className="space-y-3">

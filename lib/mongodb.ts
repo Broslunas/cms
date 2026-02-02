@@ -34,3 +34,18 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 export default clientPromise;
+
+/**
+ * Database name
+ */
+export const DB_NAME = "broslunas-cms";
+
+/**
+ * Get user collection name
+ * Each user has their own collection to isolate data
+ */
+export function getUserCollectionName(userId: string): string {
+  // Sanitize userId to be a valid collection name
+  const sanitized = userId.replace(/[^a-zA-Z0-9_]/g, '_');
+  return `user_${sanitized}`;
+}

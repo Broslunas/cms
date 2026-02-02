@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { signOut } from "@/lib/auth";
-import clientPromise from "@/lib/mongodb";
+import clientPromise, { DB_NAME, getUserCollectionName } from "@/lib/mongodb";
 import Link from "next/link";
 import ImportButton from "@/components/ImportButton";
 
@@ -14,10 +14,11 @@ export default async function DashboardPage() {
 
   // Obtener proyectos importados del usuario
   const client = await clientPromise;
-  const db = client.db("astro-cms");
-  const projects = await db
-    .collection("projects")
-    .find({ userId: session.user.id })
+  const db = client.db(DB_NAME);
+  const userCollection = db.collection(getUserCollectionName(session.user.id));
+  
+  const projects = await userCollection
+    .find({ type: "project" })
     .sort({ updatedAt: -1 })
     .toArray();
 

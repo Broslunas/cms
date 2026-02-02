@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import clientPromise from "@/lib/mongodb";
+import clientPromise, { DB_NAME, getUserCollectionName } from "@/lib/mongodb";
 import { serializeMarkdown } from "@/lib/markdown";
 import { updateFile } from "@/lib/octokit";
 import { PostMetadataSchema } from "@/lib/schemas";
@@ -30,12 +30,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const client = await clientPromise;
-    const db = client.db("astro-cms");
-    const postsCollection = db.collection("posts");
+    const db = client.db(DB_NAME);
+    const userCollection = db.collection(getUserCollectionName(session.user.id));
 
     // Obtener el post actual
-    const post = await postsCollection.findOne({
+    const post = await userCollection.findOne({
       _id: new ObjectId(postId),
+      type: "post",
       userId: session.user.id,
     });
 
@@ -43,12 +44,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    // Actualizar en MongoDB
-    await postsCollection.updateOne(
-      { _id: new ObjectId(postId) },
+    // 1. Actualizar en MongoDB primero
+    await userCollection.updateOne(
+      { _id: new ObjectId(postId), type: "post" },
       {
         $set: {
-          metadata: validationResult.data,
+          metadata,
           content,
           status: commitToGitHub ? "synced" : "modified",
           updatedAt: new Date(),
@@ -56,15 +57,15 @@ export async function PUT(request: NextRequest) {
       }
     );
 
-    // Si se solicita commit a GitHub
+    // 2. Si se solicita commit a GitHub
     if (commitToGitHub) {
       const accessToken = session.access_token as string;
       const [owner, repo] = post.repoId.split("/");
 
       // Serializar a markdown
-      const markdownContent = serializeMarkdown(validationResult.data, content);
+      const markdownContent = serializeMarkdown(metadata, content);
 
-      // Hacer commit a GitHub
+      // Actualizar en GitHub
       const result = await updateFile(
         accessToken,
         owner,
@@ -76,8 +77,8 @@ export async function PUT(request: NextRequest) {
       );
 
       // Actualizar el SHA en MongoDB
-      await postsCollection.updateOne(
-        { _id: new ObjectId(postId) },
+      await userCollection.updateOne(
+        { _id: new ObjectId(postId), type: "post" },
         {
           $set: {
             sha: result.sha,
@@ -106,6 +107,18 @@ export async function PUT(request: NextRequest) {
           code: "CONFLICT",
         },
         { status: 409 }
+      );
+    }
+
+    // Detectar errores de permisos de GitHub (403)
+    if (error.status === 403 || error.message?.includes("not accessible by integration")) {
+      return NextResponse.json(
+        {
+          error: "No tienes permisos para hacer commits en GitHub",
+          code: "PERMISSION_ERROR",
+          details: "Necesitas crear una GitHub App con permisos de Contents: Read & Write"
+        },
+        { status: 403 }
       );
     }
 

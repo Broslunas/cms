@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { listContentFiles, getFileContent } from "@/lib/octokit";
 import { parseMarkdown } from "@/lib/markdown";
 import { PostMetadataSchema } from "@/lib/schemas";
-import clientPromise from "@/lib/mongodb";
+import clientPromise, { DB_NAME, getUserCollectionName } from "@/lib/mongodb";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
 
     // 2. Conectar a MongoDB
     const client = await clientPromise;
-    const db = client.db("astro-cms");
-    const postsCollection = db.collection("posts");
+    const db = client.db(DB_NAME);
+    const userCollection = db.collection(getUserCollectionName(userId));
 
     let imported = 0;
     const errors: string[] = [];
@@ -65,11 +65,12 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // 6. Upsert en MongoDB
-        await postsCollection.updateOne(
-          { userId, repoId, filePath },
+        // 6. Upsert en MongoDB (user collection)
+        await userCollection.updateOne(
+          { type: "post", userId, repoId, filePath },
           {
             $set: {
+              type: "post",
               sha: fileData.sha,
               metadata: validationResult.data,
               content,
@@ -94,12 +95,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. Guardar/actualizar el proyecto
-    const projectsCollection = db.collection("projects");
-    await projectsCollection.updateOne(
-      { userId, repoId },
+    // 7. Guardar/actualizar el proyecto en user collection
+    await userCollection.updateOne(
+      { type: "project", userId, repoId },
       {
         $set: {
+          type: "project",
           name: name || repo,
           description: description || "",
           postsCount: imported,

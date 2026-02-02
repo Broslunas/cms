@@ -64,6 +64,17 @@ export default function PostEditor({ post }: { post: Post }) {
         const error = await response.json();
         if (error.code === "CONFLICT") {
           alert("⚠️ Conflicto: El archivo ha sido modificado externamente. Refresca los datos.");
+        } else if (error.code === "PERMISSION_ERROR") {
+          alert(
+            "❌ Error de Permisos\n\n" +
+            "Tu GitHub OAuth App no tiene permisos para hacer commits.\n\n" +
+            "Solución:\n" +
+            "1. Ve a GitHub Settings > Developer Settings\n" +
+            "2. Crea una GitHub App (no OAuth App)\n" +
+            "3. Dale permisos de 'Contents: Read & Write'\n" +
+            "4. Actualiza las credenciales en .env.local\n\n" +
+            "Ver GITHUB_PERMISSIONS.md para más detalles"
+          );
         } else {
           alert(`❌ Error: ${error.error}`);
         }
