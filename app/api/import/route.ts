@@ -4,6 +4,11 @@ import { parseMarkdown } from "@/lib/markdown";
 import { PostMetadataSchema } from "@/lib/schemas";
 import clientPromise, { DB_NAME, getUserCollectionName } from "@/lib/mongodb";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  parseContentConfig,
+  detectCollectionFromPath,
+  validateAgainstSchema,
+} from "@/lib/config-parser";
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,7 +31,12 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id;
     const repoId = `${owner}/${repo}`;
 
-    // 1. Listar archivos de contenido
+    // 1. Parsear el config.ts para obtener los schemas
+    console.log("Parseando config.ts...");
+    const schemas = await parseContentConfig(accessToken, owner, repo);
+    console.log(`Encontrados ${schemas.length} schemas:`, schemas.map(s => s.name));
+
+    // 2. Listar archivos de contenido
     const files = await listContentFiles(accessToken, owner, repo);
 
     if (files.length === 0) {
@@ -57,20 +67,25 @@ export async function POST(request: NextRequest) {
         // 4. Parsear el markdown
         const { metadata, content } = parseMarkdown(fileData.content);
 
-        // 5. Validar metadata
-        const validationResult = PostMetadataSchema.safeParse(metadata);
+        // 5. Detectar a qué colección pertenece
+        const collectionName = detectCollectionFromPath(filePath);
+        const schema = schemas.find((s) => s.name === collectionName) || schemas[0];
 
-        if (!validationResult.success) {
-          errors.push(`Invalid metadata in ${filePath}: ${validationResult.error.message}`);
+        // 6. Validar contra el schema de la colección
+        const validationResult = validateAgainstSchema(metadata, schema);
+
+        if (!validationResult.valid) {
+          errors.push(`Invalid metadata in ${filePath}: ${validationResult.errors?.join(", ")}`);
           continue;
         }
 
-        // 6. Upsert en MongoDB (user collection)
+        // 7. Upsert en MongoDB (user collection)
         await userCollection.updateOne(
           { type: "post", userId, repoId, filePath },
           {
             $set: {
               type: "post",
+              collection: collectionName,
               sha: fileData.sha,
               metadata: validationResult.data,
               content,
@@ -95,7 +110,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. Guardar/actualizar el proyecto en user collection
+    // 8. Guardar los schemas de las colecciones
+    for (const schema of schemas) {
+      await userCollection.updateOne(
+        { type: "schema", userId, repoId, collectionName: schema.name },
+        {
+          $set: {
+            type: "schema",
+            collectionName: schema.name,
+            fields: schema.fields,
+            updatedAt: new Date(),
+          },
+          $setOnInsert: {
+            userId,
+            repoId,
+            createdAt: new Date(),
+          },
+        },
+        { upsert: true }
+      );
+    }
+
+    // 9. Guardar/actualizar el proyecto en user collection
     await userCollection.updateOne(
       { type: "project", userId, repoId },
       {
