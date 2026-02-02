@@ -12,7 +12,23 @@ export function parseMarkdown(rawContent: string) {
  * Serializa metadata y contenido de vuelta a formato Markdown
  */
 export function serializeMarkdown(metadata: Record<string, any>, content: string) {
-  return matter.stringify(content, metadata);
+  // Configurar las opciones de opciones de dump de js-yaml a través de gray-matter
+  // para forzar el estilo "flow" (inline) en los arrays.
+  // forceQuotes puede ser útil pero no es estrictamente lo pedido.
+  const options = {
+    // Estas opciones se pasan a js-yaml.dump
+    // flowLevel: -1 (default, block), 0, 1 etc.
+    // Un valor de 2 o 3 suele forzar arrays simples a ser inline si son cortos.
+    // Sin embargo, js-yaml a veces es caprichoso.
+    // 'styles': { '!!seq': 'flow' } podría funcionar en versiones viejas.
+  };
+
+  // Hack temporal: gray-matter con js-yaml a veces no expone bien el estilo flow específico por tipo.
+  // Pero podemos intentar pasar flowLevel.
+  return matter.stringify(content, metadata, {
+     // @ts-ignore - gray-matter types might not include js-yaml dump options
+     flowLevel: 1 
+  });
 }
 
 /**

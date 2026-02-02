@@ -44,7 +44,12 @@ export default function RepoFilters({ collections }: RepoFiltersProps) {
     const repo = searchParams.get("repo");
     if (repo) params.set("repo", repo);
 
-    router.replace(`?${params.toString()}`);
+    const newQueryString = params.toString();
+    const currentQueryString = searchParams.toString();
+
+    if (newQueryString !== currentQueryString) {
+      router.replace(`?${newQueryString}`);
+    }
   }, [debouncedSearch, status, collection, router, searchParams]);
 
   return (

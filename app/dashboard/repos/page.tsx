@@ -85,7 +85,18 @@ export default async function ReposPage({
             </Link>
           </div>
 
-          <SyncButton repoId={repoId} />
+          <div className="flex items-center gap-3">
+             <Link
+              href={`/dashboard/editor/new?repo=${encodeURIComponent(repoId)}`}
+              className="px-4 py-2 bg-white text-black text-sm font-medium rounded-md hover:bg-zinc-200 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Crear Nuevo Post
+            </Link>
+            <SyncButton repoId={repoId} />
+          </div>
         </div>
       </header>
 

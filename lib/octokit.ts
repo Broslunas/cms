@@ -156,3 +156,27 @@ export async function updateFile(
     commit: data.commit.sha,
   };
 }
+
+/**
+ * Elimina un archivo del repositorio
+ */
+export async function deleteFile(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  path: string,
+  sha: string,
+  message: string
+) {
+  const octokit = getOctokit(accessToken);
+
+  const { data } = await octokit.repos.deleteFile({
+    owner,
+    repo,
+    path,
+    message,
+    sha,
+  });
+
+  return data;
+}

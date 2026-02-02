@@ -19,6 +19,8 @@ interface Post {
   metadata: PostMetadata;
   content: string;
   status: string;
+  collection: string;
+  sha?: string;
 }
 
 interface SchemaField {
@@ -33,18 +35,133 @@ interface Schema {
 interface PostEditorProps {
   post: Post;
   schema: Schema | null;
+  isNew?: boolean;
 }
 
-export default function PostEditor({ post, schema }: PostEditorProps) {
+export default function PostEditor({ post, schema, isNew = false }: PostEditorProps) {
   const [metadata, setMetadata] = useState<PostMetadata>(post.metadata);
   const [content, setContent] = useState(post.content);
+  const [createFilePath, setCreateFilePath] = useState(
+    isNew 
+      ? `src/content/${post.collection || 'blog'}/untitled.md` 
+      : post.filePath
+  );
+  
   const [saving, setSaving] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [activeTab, setActiveTab] = useState<"edit" | "preview" | "split">("edit");
   const [showPermissionError, setShowPermissionError] = useState(false);
   const [showConflictError, setShowConflictError] = useState(false);
+  
+  // Metadata Tools State
+  const [showAddField, setShowAddField] = useState(false);
+  
+  // Delete State
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteFromGitHub, setDeleteFromGitHub] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const [newFieldName, setNewFieldName] = useState("");
+  const [newFieldType, setNewFieldType] = useState("string");
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importablePosts, setImportablePosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
+
+  // --- Handlers for Metadata Tools ---
+  const handleAddField = () => {
+    if (!newFieldName.trim()) {
+      toast.error("El nombre del campo es requerido");
+      return;
+    }
+    
+    if (metadata[newFieldName]) {
+      toast.error("Este campo ya existe");
+      return;
+    }
+
+    let initialValue: any = "";
+    if (newFieldType === "number") initialValue = 0;
+    if (newFieldType === "boolean") initialValue = false;
+    if (newFieldType === "array") initialValue = [];
+    if (newFieldType === "date") initialValue = new Date().toISOString().split('T')[0];
+
+    updateMetadata(newFieldName, initialValue);
+    setNewFieldName("");
+    setShowAddField(false);
+    toast.success(`Campo '${newFieldName}' añadido`);
+  };
+
+  const loadImportablePosts = async () => {
+    setLoadingPosts(true);
+    try {
+      const res = await fetch(`/api/posts?repoId=${encodeURIComponent(post.repoId)}`);
+      if (res.ok) {
+        const posts = await res.json();
+        // Filtrar el post actual
+        setImportablePosts(posts.filter((p: any) => p._id !== post._id));
+      }
+    } catch (e) {
+      toast.error("Error cargando posts");
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
+  const handleImportMetadata = (sourcePost: Post) => {
+    const newMetadata = { ...metadata };
+    
+    Object.entries(sourcePost.metadata).forEach(([key, value]) => {
+      // Importamos todo, incluido el título, para que el usuario pueda usarlo de base
+      if (key !== "date") { 
+          newMetadata[key] = value;
+      }
+    });
+
+    setMetadata(newMetadata);
+    setShowImportModal(false);
+    toast.success("Metadatos importados. Revisa el título.");
+  };
+
+  const handleDeleteField = (key: string) => {
+      const newMetadata = { ...metadata };
+      delete newMetadata[key];
+      setMetadata(newMetadata);
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    const toastId = toast.loading("Eliminando post...");
+
+    try {
+      const response = await fetch("/api/posts/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postId: post._id,
+          deleteFromGitHub: deleteFromGitHub && post.sha, 
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("Post eliminado correctamente", { id: toastId });
+        router.push(`/dashboard/repos?repo=${encodeURIComponent(post.repoId)}`);
+      } else {
+        const error = await response.json();
+        toast.error(`Error al eliminar: ${error.error}`, { id: toastId });
+        setDeleting(false);
+        setShowDeleteConfirm(false);
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error("Error al eliminar el post", { id: toastId });
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   const handleSave = async (commitToGitHub: boolean = false) => {
     if (commitToGitHub) {
@@ -56,25 +173,52 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
     const toastId = toast.loading(commitToGitHub ? "Guardando y commiteando..." : "Guardando...");
 
     try {
-      const response = await fetch("/api/posts/update", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          postId: post._id,
-          metadata,
-          content,
-          commitToGitHub,
-        }),
-      });
+      let response;
+      let body;
+
+      if (isNew) {
+         body = {
+            repoId: post.repoId,
+            collection: post.collection,
+            metadata,
+            content,
+            filePath: createFilePath,
+            commitToGitHub
+         };
+         response = await fetch("/api/posts/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+         });
+      } else {
+         body = {
+            postId: post._id,
+            metadata,
+            content,
+            commitToGitHub,
+         };
+         response = await fetch("/api/posts/update", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+         });
+      }
 
       if (response.ok) {
         const result = await response.json();
+        
         if (result.committed) {
           toast.success("Cambios guardados y commiteados a GitHub", { id: toastId });
         } else {
           toast.success("Cambios guardados localmente", { id: toastId });
         }
-        router.refresh();
+        
+        if (isNew && result.postId) {
+            router.push(`/dashboard/editor/${result.postId}`);
+        } else {
+            router.refresh();
+        }
+
       } else {
         const error = await response.json();
         
@@ -135,9 +279,20 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
     if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object") {
       return (
         <div key={key}>
-          <label className="block text-sm font-medium text-zinc-300 mb-2 capitalize">
-            {key}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-zinc-300 capitalize">
+              {key}
+            </label>
+            <button 
+              onClick={() => handleDeleteField(key)} 
+              className="text-zinc-500 hover:text-red-400 transition-colors p-1"
+              title={`Eliminar campo ${key}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
           <div className="bg-zinc-800 border border-zinc-700 rounded-md p-4">
             <p className="text-sm text-zinc-400">
               Campo complejo con {value.length} elementos
@@ -159,9 +314,20 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
     if (Array.isArray(value)) {
       return (
         <div key={key}>
-          <label className="block text-sm font-medium text-zinc-300 mb-2 capitalize">
-            {key} (separados por coma)
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-zinc-300 capitalize">
+              {key} (separados por coma)
+            </label>
+            <button 
+              onClick={() => handleDeleteField(key)} 
+              className="text-zinc-500 hover:text-red-400 transition-colors p-1"
+              title={`Eliminar campo ${key}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
           <input
             type="text"
             value={value.join(", ")}
@@ -199,9 +365,20 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
 
       return (
         <div key={key}>
-          <label className="block text-sm font-medium text-zinc-300 mb-2 capitalize">
-            {key}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-zinc-300 capitalize">
+              {key}
+            </label>
+            <button 
+              onClick={() => handleDeleteField(key)} 
+              className="text-zinc-500 hover:text-red-400 transition-colors p-1"
+              title={`Eliminar campo ${key}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
           <div className="space-y-3">
             <input
               type="text"
@@ -242,9 +419,20 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
     if (typeof value === "number") {
       return (
         <div key={key}>
-          <label className="block text-sm font-medium text-zinc-300 mb-2 capitalize">
-            {key}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-zinc-300 capitalize">
+              {key}
+            </label>
+            <button 
+              onClick={() => handleDeleteField(key)} 
+              className="text-zinc-500 hover:text-red-400 transition-colors p-1"
+              title={`Eliminar campo ${key}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
           <input
             type="number"
             value={value}
@@ -259,15 +447,27 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
     if (typeof value === "boolean") {
       return (
         <div key={key}>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={value}
-              onChange={(e) => updateMetadata(key, e.target.checked)}
-              className="w-4 h-4 bg-zinc-800 border-zinc-700 rounded"
-            />
-            <span className="text-sm font-medium text-zinc-300 capitalize">{key}</span>
-          </label>
+          {/* Boolean field with custom delete handling */}
+          <div className="flex items-center justify-between">
+             <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={value}
+                  onChange={(e) => updateMetadata(key, e.target.checked)}
+                  className="w-4 h-4 bg-zinc-800 border-zinc-700 rounded"
+                />
+                <span className="text-sm font-medium text-zinc-300 capitalize">{key}</span>
+             </label>
+             <button 
+                onClick={() => handleDeleteField(key)} 
+                className="text-zinc-500 hover:text-red-400 transition-colors p-1"
+                title={`Eliminar campo ${key}`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+          </div>
         </div>
       );
     }
@@ -276,9 +476,20 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
     if (typeof value === "object" && value !== null) {
       return (
         <div key={key}>
-          <label className="block text-sm font-medium text-zinc-300 mb-2 capitalize">
-            {key}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-zinc-300 capitalize">
+              {key}
+            </label>
+            <button 
+              onClick={() => handleDeleteField(key)} 
+              className="text-zinc-500 hover:text-red-400 transition-colors p-1"
+              title={`Eliminar campo ${key}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
           <div className="bg-zinc-800 border border-zinc-700 rounded-md p-4">
             <p className="text-sm text-zinc-400">Campo objeto complejo</p>
             <details className="mt-2">
@@ -346,6 +557,22 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
             >
               {committing ? "Commiteando..." : "Guardar y Commitear"}
             </button>
+
+            {!isNew && (
+              <div className="hidden md:block w-px h-6 bg-zinc-800 mx-1" />
+            )}
+
+            {!isNew && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                title="Eliminar Post"
+                className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -356,12 +583,26 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
         <div className="bg-zinc-900 rounded-lg p-4 border border-zinc-800">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
+
               <p className="text-sm text-zinc-400">
                 <span className="text-zinc-500">Repositorio:</span> {post.repoId}
               </p>
-              <p className="text-sm text-zinc-400">
-                <span className="text-zinc-500">Archivo:</span> {post.filePath}
-              </p>
+              
+              {isNew ? (
+                <div className="mt-2">
+                    <label className="block text-xs font-medium text-zinc-500 mb-1">Path del archivo</label>
+                    <input 
+                        type="text" 
+                        value={createFilePath}
+                        onChange={(e) => setCreateFilePath(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-200 font-mono focus:border-blue-500 focus:outline-none"
+                    />
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-400">
+                    <span className="text-zinc-500">Archivo:</span> {post.filePath}
+                </p>
+              )}
             </div>
             <span
               className={`px-3 py-1 rounded text-xs font-medium ${
@@ -377,7 +618,40 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
 
         {/* Metadata Fields */}
         <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800 space-y-5">
-          <h2 className="text-xl font-semibold text-white">Metadata</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-white">Metadata</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowImportModal(true); loadImportablePosts(); }}
+                className="px-3 py-1.5 text-xs font-medium bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 rounded border border-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 012 2v8a2 2 0 01-2 2h-8a2 2 0 01-2-2v-8a2 2 0 012-2z" />
+                </svg>
+                Importar
+              </button>
+              <button
+                onClick={() => setShowAddField(true)}
+                className="px-3 py-1.5 text-xs font-medium bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 rounded transition-colors flex items-center gap-2"
+              >
+                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Añadir Campo
+              </button>
+              {!isNew && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="px-3 py-1.5 text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 rounded transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Eliminar
+                </button>
+              )}
+            </div>
+          </div>
           <div className="space-y-4">
             {Object.entries(metadata).map(([key, value]) => renderField(key, value))}
           </div>
@@ -387,7 +661,7 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
         </div>
 
         {/* Content Editor - DARK MODE + TOOLBAR */}
-        <div className="bg-zinc-900 rounded-lg shadow-sm border border-zinc-800 flex flex-col min-h-[800px]">
+        <div className="bg-zinc-900 rounded-lg shadow-sm border border-zinc-800 flex flex-col min-h-[600px]">
           {/* Tabs & Toolbar */}
           <div className="border-b border-zinc-800 bg-zinc-900">
             <div className="flex items-center justify-between px-4 py-2">
@@ -562,9 +836,140 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
             </div>
           </div>
         </div>
+
+
+        {/* Danger Zone */}
+        {!isNew && (
+          <div className="bg-red-500/5 rounded-lg p-6 border border-red-500/20">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold text-red-400">Zona de Peligro</h3>
+                <p className="text-zinc-400 text-sm">
+                  Esta acción eliminará el post permanentemente. No se puede deshacer.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-600 hover:text-white border border-red-500/50 rounded-md transition-all text-sm font-medium"
+              >
+                Eliminar Post
+              </button>
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* MODALS */}
+      {/* Modal Definitions */}
+      {/* Add Field Modal */}
+      <Modal
+        isOpen={showAddField}
+        onClose={() => setShowAddField(false)}
+        title="Añadir Nuevo Campo"
+        description="Define el nombre y el tipo del nuevo campo de metadatos."
+        footer={
+          <div className="flex justify-end gap-2">
+            <button
+               onClick={() => setShowAddField(false)}
+               className="px-4 py-2 text-sm text-zinc-400 hover:text-white"
+            >
+              Cancelar
+            </button>
+            <button
+               onClick={handleAddField}
+               className="px-4 py-2 text-sm bg-white text-black rounded font-medium hover:bg-zinc-200"
+            >
+              Añadir
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Nombre del Campo (Key)</label>
+            <input
+              type="text"
+              value={newFieldName}
+              onChange={(e) => setNewFieldName(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-700 rounded p-2 text-sm text-white focus:border-white outline-none"
+              placeholder="Ej: author, category, date..."
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Tipo de Dato</label>
+            <select
+              value={newFieldType}
+              onChange={(e) => setNewFieldType(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-700 rounded p-2 text-sm text-white focus:border-white outline-none"
+            >
+              <option value="string">Texto</option>
+              <option value="number">Número</option>
+              <option value="boolean">Booleano (Si/No)</option>
+              <option value="array">Lista (Tags)</option>
+              <option value="date">Fecha</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Import Metadata Modal */}
+      <Modal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Importar Metadatos"
+        description="Selecciona un post existente para copiar sus metadatos al post actual."
+        footer={
+           <button
+             onClick={() => setShowImportModal(false)}
+             className="px-4 py-2 text-sm text-zinc-400 hover:text-white"
+           >
+             Cancelar
+           </button>
+        }
+      >
+        <div className="space-y-4">
+           {/* Search */}
+           <input
+             type="text"
+             placeholder="Buscar posts..."
+             value={searchTerm}
+             onChange={(e) => setSearchTerm(e.target.value)}
+             className="w-full bg-zinc-950 border border-zinc-700 rounded p-2 text-sm text-white focus:border-white outline-none"
+           />
+           
+           {/* List */}
+           <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+             {loadingPosts ? (
+               <div className="text-center py-4 text-zinc-500">Cargando posts...</div>
+             ) : (
+               importablePosts
+                  .filter(p => 
+                    (p.metadata.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                     p.filePath.toLowerCase().includes(searchTerm.toLowerCase()))
+                  )
+                  .map(post => (
+                 <button
+                   key={post._id}
+                   onClick={() => handleImportMetadata(post)}
+                   className="w-full text-left p-3 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800 transition-all group"
+                 >
+                   <div className="font-medium text-white group-hover:text-blue-400 transition-colors">
+                     {post.metadata.title || "Sin título"}
+                   </div>
+                   <div className="text-xs text-zinc-500 font-mono truncate">
+                     {post.filePath}
+                   </div>
+                 </button>
+               ))
+             )}
+             {!loadingPosts && importablePosts.length > 0 && importablePosts.filter(p => p.metadata.title?.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                <div className="text-center py-4 text-zinc-500">No se encontraron posts</div>
+             )}
+             {!loadingPosts && importablePosts.length === 0 && (
+               <div className="text-center py-4 text-zinc-500">No hay otros posts disponibles</div>
+             )}
+           </div>
+        </div>
+      </Modal>
       <Modal
         isOpen={showConflictError}
         onClose={() => setShowConflictError(false)}
@@ -614,6 +1019,54 @@ export default function PostEditor({ post, schema }: PostEditorProps) {
           </div>
           <p>Consulta <code>GITHUB_PERMISSIONS.md</code> para más detalles.</p>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Eliminar Post"
+        description="¿Estás seguro de que quieres eliminar este post? Esta acción no se puede deshacer."
+        footer={
+           <div className="flex justify-end gap-2">
+             <button
+               onClick={() => setShowDeleteConfirm(false)}
+               className="px-4 py-2 text-sm text-zinc-400 hover:text-white"
+               disabled={deleting}
+             >
+               Cancelar
+             </button>
+             <button
+               onClick={handleDelete}
+               disabled={deleting}
+               className="px-4 py-2 text-sm bg-red-600 text-white rounded font-medium hover:bg-red-700 disabled:opacity-50"
+             >
+               {deleting ? "Eliminando..." : "Sí, Eliminar"}
+             </button>
+           </div>
+        }
+      >
+         <div className="space-y-4">
+           {post.sha && (
+            <div className="flex items-start gap-3 p-3 bg-zinc-900 border border-zinc-800 rounded-md">
+                <input
+                  type="checkbox"
+                  id="deleteFromGithub"
+                  checked={deleteFromGitHub}
+                  onChange={(e) => setDeleteFromGitHub(e.target.checked)}
+                  className="mt-1 w-4 h-4 bg-zinc-800 border-zinc-700 rounded focus:ring-red-500 text-red-600"
+                />
+                <label htmlFor="deleteFromGithub" className="text-sm text-zinc-300 cursor-pointer select-none">
+                   <strong>También eliminar de GitHub</strong>
+                   <p className="text-zinc-500 text-xs mt-1">
+                      Esto eliminará el archivo <code>{post.filePath}</code> del repositorio remoto.
+                   </p>
+                </label>
+            </div>
+           )}
+           <div className="text-sm text-zinc-400">
+              El post se eliminará permanentemente de la base de datos local.
+           </div>
+         </div>
       </Modal>
     </>
   );
