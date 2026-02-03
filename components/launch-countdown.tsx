@@ -59,11 +59,19 @@ export function Countdown({ targetDate, className }: CountdownProps) {
 
 function TimeUnit({ value, label }: { value: number; label: string }) {
   return (
-    <div className="flex flex-col items-center justify-center p-4 bg-background/50 backdrop-blur-md border border-border/50 rounded-2xl shadow-xl hover:scale-105 transition-transform duration-300">
-      <div className="text-4xl md:text-6xl font-black bg-gradient-to-b from-foreground to-foreground/50 bg-clip-text text-transparent font-mono tabular-nums">
-        {value.toString().padStart(2, "0")}
+    <div className="relative group">
+      {/* Glow effect */}
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-green-400 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
+      
+      {/* Glass card */}
+      <div className="relative glass-strong rounded-2xl p-6 md:p-8 shadow-2xl hover:shadow-emerald-500/20 transition-all duration-300 hover:scale-105 border-emerald-500/20">
+        <div className="text-5xl md:text-7xl font-black bg-gradient-to-br from-emerald-400 via-green-400 to-teal-400 bg-clip-text text-transparent font-mono tabular-nums drop-shadow-lg">
+          {value.toString().padStart(2, "0")}
+        </div>
+        <div className="text-xs md:text-sm font-semibold text-muted-foreground uppercase tracking-[0.2em] mt-3">
+          {label}
+        </div>
       </div>
-      <div className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-widest mt-2">{label}</div>
     </div>
   );
 }
