@@ -624,7 +624,31 @@ export default function PostEditor({ post, schema, isNew = false }: PostEditorPr
         const result = await response.json();
         
         if (result.committed) {
-          toast.success("Cambios guardados y commiteados a GitHub", { id: toastId });
+          // Descartar el toast de loading
+          toast.dismiss(toastId);
+          
+          // Construir la URL del commit en GitHub
+          const commitUrl = `https://github.com/${result.owner}/${result.repo}/commit/${result.commitSha}`;
+          
+          // Mostrar un toast personalizado con enlace al commit
+          toast.success(
+            <div className="flex flex-col gap-1">
+              <p className="font-medium">Cambios guardados y commiteados a GitHub</p>
+              <a 
+                href={commitUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Ver commit en GitHub
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </div>,
+            { duration: 6000 }
+          );
         } else {
           toast.success("Cambios guardados localmente", { id: toastId });
         }

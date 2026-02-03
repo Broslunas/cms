@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     };
 
     let createdSha = null;
+    let commitSha = null;
 
     // Si se solicita commit a GitHub
     if (commitToGitHub) {
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
             `Create ${metadata.title || filePath}`
         );
         createdSha = result.sha;
+        commitSha = result.commit;
         newPost.sha = createdSha;
       } catch (error: any) {
           console.error("GitHub commit error:", error);
@@ -84,11 +86,16 @@ export async function POST(request: NextRequest) {
     // Insertar en MongoDB
     const result = await userCollection.insertOne(newPost);
 
+    const [owner, repo] = repoId.split("/");
+    
     return NextResponse.json({
       success: true,
       postId: result.insertedId.toString(),
       committed: commitToGitHub,
       sha: createdSha,
+      commitSha: commitSha,
+      owner,
+      repo,
     });
 
   } catch (error: any) {

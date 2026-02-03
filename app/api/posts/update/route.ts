@@ -87,6 +87,9 @@ export async function PUT(request: NextRequest) {
         success: true,
         committed: true,
         newSha: result.sha,
+        commitSha: result.commit,
+        owner,
+        repo,
       });
     }
 
