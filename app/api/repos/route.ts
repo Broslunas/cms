@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { listUserRepos, isAstroRepo } from "@/lib/octokit";
+import { listUserRepos, isAstroRepo, promiseAllWithLimit } from "@/lib/octokit";
 import { NextResponse } from "next/server";
 import clientPromise, { DB_NAME, getUserCollectionName } from "@/lib/mongodb";
 
@@ -46,17 +46,19 @@ export async function GET() {
       (repo) => !importedRepoIds.has(repo.full_name)
     );
 
-    // 4. Filtrar solo repositorios que usan Astro (de los disponibles)
-    const astroRepos = [];
-    
-    for (const repo of availableRepos) {
-      const [owner, repoName] = repo.full_name.split("/");
-      const usesAstro = await isAstroRepo(accessToken, owner, repoName);
-      
-      if (usesAstro) {
-        astroRepos.push(repo);
+    // 4. Filtrar solo repositorios que usan Astro (en paralelo con límite para evitar rate limiting)
+    const astroChecks = await promiseAllWithLimit(
+      availableRepos,
+      10, // Máximo 10 peticiones simultáneas
+      async (repo) => {
+        const [owner, repoName] = repo.full_name.split("/");
+        const usesAstro = await isAstroRepo(accessToken, owner, repoName);
+        return usesAstro ? repo : null;
       }
-    }
+    );
+    
+    // Filtrar los null (repos que no son Astro)
+    const astroRepos = astroChecks.filter((repo) => repo !== null);
 
     return NextResponse.json(astroRepos);
   } catch (error) {

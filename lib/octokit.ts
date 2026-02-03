@@ -1,5 +1,37 @@
 import { Octokit } from "@octokit/rest";
 
+// Caché en memoria para verificaciones de Astro (evita llamadas repetidas)
+const astroRepoCache = new Map<string, boolean>();
+
+/**
+ * Ejecuta promesas con un límite de concurrencia para evitar rate limiting
+ */
+export async function promiseAllWithLimit<T>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<any>
+): Promise<any[]> {
+  const results: any[] = [];
+  const executing: Promise<any>[] = [];
+
+  for (const item of items) {
+    const promise = fn(item).then(result => {
+      results.push(result);
+      executing.splice(executing.indexOf(promise), 1);
+      return result;
+    });
+
+    executing.push(promise);
+
+    if (executing.length >= limit) {
+      await Promise.race(executing);
+    }
+  }
+
+  await Promise.all(executing);
+  return results;
+}
+
 export function getOctokit(accessToken: string) {
   return new Octokit({
     auth: accessToken,
@@ -28,6 +60,13 @@ export async function isAstroRepo(
   owner: string,
   repo: string
 ): Promise<boolean> {
+  const cacheKey = `${owner}/${repo}`;
+  
+  // Verificar si ya tenemos el resultado en caché
+  if (astroRepoCache.has(cacheKey)) {
+    return astroRepoCache.get(cacheKey)!;
+  }
+  
   const octokit = getOctokit(accessToken);
   
   try {
@@ -46,12 +85,20 @@ export async function isAstroRepo(
       const deps = packageJson.dependencies || {};
       const devDeps = packageJson.devDependencies || {};
       
-      return "astro" in deps || "astro" in devDeps;
+      const isAstro = "astro" in deps || "astro" in devDeps;
+      
+      // Guardar en caché
+      astroRepoCache.set(cacheKey, isAstro);
+      
+      return isAstro;
     }
     
+    // No es un archivo, guardar false en caché
+    astroRepoCache.set(cacheKey, false);
     return false;
   } catch (error) {
-    // Si no hay package.json, no es un proyecto Astro
+    // Si no hay package.json, no es un proyecto Astro, guardar en caché
+    astroRepoCache.set(cacheKey, false);
     return false;
   }
 }
@@ -110,14 +157,23 @@ export async function listContentFiles(
     const files: string[] = [];
 
     if (Array.isArray(data)) {
-      for (const item of data) {
-        if (item.type === "file" && (item.name.endsWith(".md") || item.name.endsWith(".mdx"))) {
-          files.push(item.path);
-        } else if (item.type === "dir") {
-          // Recursivamente buscar en subdirectorios
-          const subFiles = await listContentFiles(accessToken, owner, repo, item.path);
-          files.push(...subFiles);
-        }
+      // Separar archivos y directorios
+      const immediateFiles = data
+        .filter(item => item.type === "file" && (item.name.endsWith(".md") || item.name.endsWith(".mdx")))
+        .map(item => item.path);
+      
+      files.push(...immediateFiles);
+
+      // Procesar subdirectorios en paralelo
+      const directories = data.filter(item => item.type === "dir");
+      
+      if (directories.length > 0) {
+        const subFilesArrays = await Promise.all(
+          directories.map(dir => listContentFiles(accessToken, owner, repo, dir.path))
+        );
+        
+        // Aplanar el array de arrays
+        subFilesArrays.forEach(subFiles => files.push(...subFiles));
       }
     }
 

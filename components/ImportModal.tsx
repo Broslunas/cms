@@ -24,12 +24,17 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState<{ step: string; message: string; completed?: number; total?: number }>({
+    step: "idle",
+    message: "",
+  });
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     if (isOpen) {
       fetchRepos();
+      setProgress({ step: "idle", message: "" });
     }
   }, [isOpen]);
 
@@ -51,10 +56,11 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
   const handleImport = async (repo: Repo) => {
     setImporting(true);
     setSelectedRepo(repo.full_name);
+    setProgress({ step: "starting", message: "Iniciando importación..." });
 
     try {
       const [owner, repoName] = repo.full_name.split("/");
-      const response = await fetch("/api/import", {
+      const response = await fetch("/api/import-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -65,18 +71,48 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
         }),
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        const toastMessage = `✅ Importado: ${result.imported} de ${result.total} archivos`;
-        console.log(toastMessage); // Consider using toast
-        onClose();
-        router.refresh();
-      } else {
-        const error = await response.json();
-        console.error(`Error: ${error.error}`); // Consider using toast
+      if (!response.ok) {
+        throw new Error("Error en la respuesta del servidor");
       }
-    } catch (error) {
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) return;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n").filter(Boolean);
+
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+            if (data.type === "progress") {
+              setProgress({
+                step: data.step,
+                message: data.message || progress.message,
+                completed: data.completed,
+                total: data.total,
+              });
+            } else if (data.type === "complete") {
+              console.log(`✅ Importado: ${data.imported} archivos`);
+              onClose();
+              router.refresh();
+              return;
+            } else if (data.type === "error") {
+              throw new Error(data.error);
+            }
+          } catch (e) {
+            console.error("Error parseando chunk:", e);
+          }
+        }
+      }
+    } catch (error: any) {
       console.error("Import error:", error);
+      alert(`Error al importar: ${error.message}`);
     } finally {
       setImporting(false);
       setSelectedRepo(null);
@@ -90,17 +126,39 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
       title="Importar Repositorio"
       description="Selecciona un repositorio de Astro para importar a tu dashboard."
       footer={
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="ghost" onClick={onClose} disabled={importing}>
           Cancelar
         </Button>
       }
     >
       <div className="max-h-[60vh] overflow-y-auto pr-2">
-        {loading ? (
+        {importing ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <div className="text-center">
+              <p className="font-medium text-lg">{progress.message || "Importando..."}</p>
+              {progress.total && progress.total > 0 && (
+                <div className="mt-4 w-64 space-y-2">
+                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all duration-300" 
+                      style={{ width: `${((progress.completed || 0) / progress.total) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {progress.completed} de {progress.total} archivos procesados
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : repos.length === 0 ? (
+// ... resto del componente ...
+
           <div className="text-center py-12">
             <Github className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
             <p className="text-muted-foreground">No se encontraron repositorios de Astro</p>

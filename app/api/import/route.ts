@@ -54,36 +54,37 @@ export async function POST(request: NextRequest) {
     let imported = 0;
     const errors: string[] = [];
 
-    // 3. Procesar cada archivo
-    for (const filePath of files) {
-      try {
-        const fileData = await getFileContent(accessToken, owner, repo, filePath);
+    // 3. Procesar todos los archivos en paralelo para mayor velocidad
+    const processResults = await Promise.all(
+      files.map(async (filePath) => {
+        try {
+          const fileData = await getFileContent(accessToken, owner, repo, filePath);
 
-        if (!fileData) {
-          errors.push(`Could not fetch ${filePath}`);
-          continue;
-        }
+          if (!fileData) {
+            return { success: false, error: `Could not fetch ${filePath}` };
+          }
 
-        // 4. Parsear el markdown
-        const { metadata, content } = parseMarkdown(fileData.content);
+          // 4. Parsear el markdown
+          const { metadata, content } = parseMarkdown(fileData.content);
 
-        // 5. Detectar a qué colección pertenece
-        const collectionName = detectCollectionFromPath(filePath);
-        const schema = schemas.find((s) => s.name === collectionName) || schemas[0];
+          // 5. Detectar a qué colección pertenece
+          const collectionName = detectCollectionFromPath(filePath);
+          const schema = schemas.find((s) => s.name === collectionName) || schemas[0];
 
-        // 6. Validar contra el schema de la colección
-        const validationResult = validateAgainstSchema(metadata, schema);
+          // 6. Validar contra el schema de la colección
+          const validationResult = validateAgainstSchema(metadata, schema);
 
-        if (!validationResult.valid) {
-          errors.push(`Invalid metadata in ${filePath}: ${validationResult.errors?.join(", ")}`);
-          continue;
-        }
+          if (!validationResult.valid) {
+            return { 
+              success: false, 
+              error: `Invalid metadata in ${filePath}: ${validationResult.errors?.join(", ")}` 
+            };
+          }
 
-        // 7. Upsert en MongoDB (user collection)
-        await userCollection.updateOne(
-          { type: "post", userId, repoId, filePath },
-          {
-            $set: {
+          // 7. Preparar el documento para MongoDB
+          return {
+            success: true,
+            document: {
               type: "post",
               collection: collectionName,
               sha: fileData.sha,
@@ -92,22 +93,55 @@ export async function POST(request: NextRequest) {
               status: "synced",
               lastCommitAt: new Date(),
               updatedAt: new Date(),
-            },
-            $setOnInsert: {
               userId,
               repoId,
               filePath,
               createdAt: new Date(),
+            }
+          };
+        } catch (error) {
+          console.error(`Error processing ${filePath}:`, error);
+          return { success: false, error: `Error processing ${filePath}` };
+        }
+      })
+    );
+
+    // Separar resultados exitosos de errores
+    const successfulDocs = processResults.filter(r => r.success);
+    const failedResults = processResults.filter(r => !r.success);
+    
+    // Agregar errores
+    errors.push(...failedResults.map(r => r.error!));
+
+    // 8. Guardar todos los documentos en lote (bulkWrite es más eficiente)
+    if (successfulDocs.length > 0) {
+      const bulkOps = successfulDocs.map((result: any) => ({
+        updateOne: {
+          filter: { type: "post", userId, repoId, filePath: result.document.filePath },
+          update: {
+            $set: {
+              type: result.document.type,
+              collection: result.document.collection,
+              sha: result.document.sha,
+              metadata: result.document.metadata,
+              content: result.document.content,
+              status: result.document.status,
+              lastCommitAt: result.document.lastCommitAt,
+              updatedAt: result.document.updatedAt,
+            },
+            $setOnInsert: {
+              userId: result.document.userId,
+              repoId: result.document.repoId,
+              filePath: result.document.filePath,
+              createdAt: result.document.createdAt,
             },
           },
-          { upsert: true }
-        );
+          upsert: true,
+        },
+      }));
 
-        imported++;
-      } catch (error) {
-        console.error(`Error processing ${filePath}:`, error);
-        errors.push(`Error processing ${filePath}`);
-      }
+      await userCollection.bulkWrite(bulkOps);
+      imported = successfulDocs.length;
     }
 
     // 8. Guardar los schemas de las colecciones
