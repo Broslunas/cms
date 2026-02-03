@@ -9,6 +9,7 @@ Un sistema de gestión de contenidos (CMS) basado en Git diseñado específicame
 ## ✨ Características
 
 - 🔐 **Autenticación con GitHub OAuth** - Conexión segura con tu cuenta de GitHub
+- ⚙️ **Onboarding con GitHub App** - Flujo guiado para instalar y configurar permisos
 - 📦 **Importación automática** - Escanea y importa archivos Markdown de tus repositorios
 - ✏️ **Editor visual** - Interfaz moderna para editar metadata y contenido
 - 🎙️ **Campos dinámicos** - Soporte para transcripciones y campos complejos
@@ -31,7 +32,7 @@ Un sistema de gestión de contenidos (CMS) basado en Git diseñado específicame
 - Node.js 20+ y npm
 - Cuenta de MongoDB Atlas (gratuita)
 - Cuenta de GitHub
-- GitHub OAuth App configurada
+- **GitHub App** configurada (ver instrucciones abajo)
 
 ## 🚀 Instalación
 
@@ -50,19 +51,30 @@ npm install
 3. Crea un usuario de base de datos
 4. Obtén tu connection string
 
-### 3. Configurar GitHub OAuth App
+### 3. Configurar GitHub App
 
-1. Ve a [GitHub Developer Settings](https://github.com/settings/developers)
-2. Click en "New OAuth App"
-3. Configura:
-   - **Application name**: Broslunas CMS
+**⚠️ IMPORTANTE**: Este CMS requiere una **GitHub App**, NO una OAuth App tradicional.
+
+**Guía rápida:**
+
+1. Ve a [GitHub Apps](https://github.com/settings/apps/new)
+2. Configura:
+   - **GitHub App name**: Broslunas CMS (o el que prefieras)
    - **Homepage URL**: `http://localhost:3000`
-   - **Authorization callback URL**: `http://localhost:3000/api/auth/callback/github`
-4. Guarda el **Client ID** y **Client Secret**
+   - **Callback URL**: `http://localhost:3000/api/auth/callback/github`
+   - **Webhook**: Desactivado
+3. **Permisos de repositorio**:
+   - **Contents**: `Read and write` ✅ **MUY IMPORTANTE**
+   - **Metadata**: `Read-only` (automático)
+4. Guarda el **Client ID** y genera un **Client Secret**
+5. Copia el **App Slug** (aparece en la URL después de crear)
+6. Instala la app en tu cuenta de GitHub
+
+**📚 Documentación completa**: Ver [`GITHUB_APP_SETUP.md`](./GITHUB_APP_SETUP.md) para instrucciones detalladas paso a paso.
 
 ### 4. Configurar variables de entorno
 
-Crea un archivo `.env.local` en la raíz del proyecto:
+Crea un archivo `.env` en la raíz del proyecto:
 
 \`\`\`bash
 # MongoDB
@@ -72,9 +84,10 @@ MONGODB_URI=mongodb+srv://usuario:password@cluster.mongodb.net/astro-cms?retryWr
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=genera-un-secret-aleatorio-aqui
 
-# GitHub OAuth
-GITHUB_ID=tu-github-client-id
-GITHUB_SECRET=tu-github-client-secret
+# GitHub App (NO OAuth App)
+GITHUB_ID=tu-github-app-client-id
+GITHUB_SECRET=tu-github-app-client-secret
+GITHUB_APP_NAME=tu-github-app-slug
 \`\`\`
 
 **Generar NEXTAUTH_SECRET:**

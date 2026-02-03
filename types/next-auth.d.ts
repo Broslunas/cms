@@ -7,6 +7,7 @@ declare module "next-auth" {
       id: string;
     } & DefaultSession["user"];
     access_token?: string;
+    appInstalled?: boolean;
   }
 }
 

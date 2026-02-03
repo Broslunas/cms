@@ -14,6 +14,11 @@ export default async function DashboardPage() {
     redirect("/");
   }
 
+  // Verificar si el usuario tiene la app instalada
+  if (!session.appInstalled) {
+    redirect("/setup");
+  }
+
   // Obtener proyectos importados del usuario
   const client = await clientPromise;
   const db = client.db(DB_NAME);

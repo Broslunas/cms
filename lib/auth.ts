@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import clientPromise from "@/lib/mongodb";
+import { checkAppInstalled } from "@/lib/github-app";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: MongoDBAdapter(clientPromise),
@@ -31,6 +32,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user && token.sub) {
         session.user.id = token.sub;
       }
+      
+      // Verificar si el usuario tiene la app instalada
+      if (session.access_token) {
+        session.appInstalled = await checkAppInstalled(session.access_token);
+      }
+      
       return session;
     },
   },
