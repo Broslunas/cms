@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getAppInstallUrl } from "@/lib/github-app";
-import { Download, CheckCircle2, Github, ArrowRight } from "lucide-react";
+import { Download, CheckCircle2, Github, ArrowRight, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,7 @@ export default async function SetupPage() {
   }
 
   const installUrl = getAppInstallUrl();
+  const isConfigured = process.env.GITHUB_APP_NAME !== undefined;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/20">
@@ -35,6 +36,21 @@ export default async function SetupPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {!isConfigured && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-destructive">Error de configuración</p>
+                  <p className="text-xs text-destructive/80 mt-1">
+                    La variable de entorno <code className="bg-destructive/20 px-1 rounded">GITHUB_APP_NAME</code> no está configurada.
+                    Por favor, configura las variables de entorno en tu plataforma de hosting.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             <div className="flex gap-4">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-sm font-bold text-primary">

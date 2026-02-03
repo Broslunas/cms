@@ -41,7 +41,8 @@ export async function checkAppInstalled(accessToken: string): Promise<boolean> {
 export function getAppInstallUrl(): string {
   const appName = process.env.GITHUB_APP_NAME;
   if (!appName) {
-    throw new Error('GITHUB_APP_NAME no está definido');
+    console.error('GITHUB_APP_NAME no está definido en las variables de entorno');
+    return 'https://github.com/apps'; // Fallback URL
   }
   return `https://github.com/apps/${appName}/installations/new`;
 }
