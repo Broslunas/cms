@@ -484,6 +484,14 @@ export default function PostEditor({ post, schema, isNew = false }: PostEditorPr
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // AI State
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiPreview, setAiPreview] = useState<{ metadata: any, content: string } | null>(null);
+  const [referencePost, setReferencePost] = useState<Post | null>(null);
+  const [showRefSelector, setShowRefSelector] = useState(false);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
@@ -577,6 +585,81 @@ export default function PostEditor({ post, schema, isNew = false }: PostEditorPr
       setDeleting(false);
       setShowDeleteConfirm(false);
     }
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) {
+      toast.error("Por favor, introduce un prompt");
+      return;
+    }
+
+    setIsGenerating(true);
+    const toastId = toast.loading("Generando contenido con IA...");
+
+    // Si el usuario eligió un post de referencia, extraemos su esquema
+    let currentSchema = schema;
+    if (referencePost) {
+        currentSchema = {};
+        Object.keys(referencePost.metadata).forEach(key => {
+            const val = referencePost.metadata[key];
+            currentSchema![key] = { 
+                type: Array.isArray(val) ? "array" : typeof val, 
+                optional: true 
+            };
+        });
+    } else if (!currentSchema && Object.keys(metadata).length > 0) {
+      currentSchema = {};
+      Object.keys(metadata).forEach(key => {
+        const val = metadata[key];
+        currentSchema![key] = { 
+            type: Array.isArray(val) ? "array" : typeof val, 
+            optional: true 
+        };
+      });
+    }
+
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          schema: currentSchema 
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAiPreview({
+          metadata: data.metadata || {},
+          content: data.content || ""
+        });
+        toast.success("Generación completada. Revisa el resultado.", { id: toastId });
+      } else {
+        const error = await res.json();
+        toast.error(`Error: ${error.error || "Error desconocido"}`, { id: toastId });
+      }
+    } catch (e) {
+      toast.error("Error conectando con la IA", { id: toastId });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const applyAiGeneration = () => {
+    if (!aiPreview) return;
+    
+    if (aiPreview.metadata) {
+      setMetadata(prev => ({ ...prev, ...aiPreview.metadata }));
+    }
+    if (aiPreview.content) {
+      setContent(aiPreview.content);
+    }
+    
+    setAiPreview(null);
+    setShowAiModal(false);
+    setAiPrompt("");
+    toast.success("¡Cambios aplicados correctamente!");
   };
 
   const handleSave = async (commitToGitHub: boolean = false) => {
@@ -1161,6 +1244,15 @@ export default function PostEditor({ post, schema, isNew = false }: PostEditorPr
                 Importar
               </button>
               <button
+                onClick={() => setShowAiModal(true)}
+                className="px-3 py-1.5 text-xs font-medium bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 border border-indigo-500/20 rounded transition-colors flex items-center gap-2"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Generar con IA
+              </button>
+              <button
                 onClick={() => setShowAddField(true)}
                 className="px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 rounded transition-colors flex items-center gap-2"
               >
@@ -1580,6 +1672,219 @@ export default function PostEditor({ post, schema, isNew = false }: PostEditorPr
               El post se eliminará permanentemente de la base de datos local.
            </div>
          </div>
+      </Modal>
+
+      {/* AI Assistant Modal */}
+      <Modal
+        isOpen={showAiModal}
+        onClose={() => {
+            if (!isGenerating) {
+                setShowAiModal(false);
+                setAiPreview(null);
+            }
+        }}
+        title="Asistente de IA (Gemini 2.0)"
+        description={aiPreview ? "Valida el contenido generado antes de aplicarlo al post." : "Describe qué tipo de post quieres generar. La IA completará los metadatos y el contenido automáticamente."}
+        footer={
+           <div className="flex justify-end gap-2">
+             <button
+               onClick={() => { setShowAiModal(false); setAiPreview(null); }}
+               className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
+               disabled={isGenerating}
+             >
+               {aiPreview ? "Descartar" : "Cancelar"}
+             </button>
+             
+             {aiPreview ? (
+                <button
+                    onClick={applyAiGeneration}
+                    className="px-4 py-2 text-sm bg-green-600 text-white rounded font-medium hover:bg-green-700 flex items-center gap-2"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Aplicar Cambios
+                </button>
+             ) : (
+                <button
+                    onClick={handleAiGenerate}
+                    disabled={isGenerating}
+                    className="px-4 py-2 text-sm bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                {isGenerating ? (
+                    <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generando...
+                    </>
+                ) : (
+                    <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Generar Post
+                    </>
+                )}
+                </button>
+             )}
+           </div>
+        }
+      >
+        <div className="space-y-4">
+           {!aiPreview ? (
+             <>
+                {/* Referencia Selector */}
+                <div className="space-y-2">
+                    <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider">Esquema de Referencia</label>
+                    {!referencePost ? (
+                        <button 
+                            onClick={() => { setShowRefSelector(true); loadImportablePosts(); }}
+                            className="w-full p-3 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all flex items-center justify-between group"
+                        >
+                            <span className="flex items-center gap-2">
+                                <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                                </svg>
+                                Seleccionar post de referencia...
+                            </span>
+                            <svg className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    ) : (
+                        <div className="p-3 bg-indigo-500/5 border border-indigo-500/20 rounded-md flex items-center justify-between">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <div className="p-2 bg-indigo-500/10 rounded">
+                                    <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <div className="overflow-hidden">
+                                    <p className="text-sm font-medium text-foreground truncate">{referencePost.metadata.title || referencePost.filePath}</p>
+                                    <p className="text-[10px] text-indigo-400 font-mono uppercase">Usando este esquema ({Object.keys(referencePost.metadata).length} campos)</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setReferencePost(null)}
+                                className="p-1 hover:text-destructive transition-colors"
+                                title="Quitar referencia"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Instrucciones para la IA</label>
+                    <textarea
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="Escribe un post sobre las ventajas de usar Next.js 15 en producción..."
+                    className="w-full h-32 bg-background border border-input rounded p-3 text-sm text-foreground focus:border-indigo-500 outline-none resize-none"
+                    />
+                </div>
+             </>
+           ) : (
+             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Metadatos Generados</h4>
+                    <pre className="text-[11px] bg-muted/50 p-3 rounded border border-border overflow-x-auto font-mono">
+                        {JSON.stringify(aiPreview.metadata, null, 2)}
+                    </pre>
+                </div>
+                <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vista Previa del Contenido</h4>
+                    <div className="bg-background border border-border rounded p-4 text-xs prose dark:prose-invert max-w-none max-h-48 overflow-y-auto">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {aiPreview.content}
+                        </ReactMarkdown>
+                    </div>
+                </div>
+                <div className="bg-yellow-500/5 border border-yellow-500/10 rounded-md p-3">
+                    <p className="text-[11px] text-yellow-600 dark:text-yellow-400 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Al aplicar, se sobrescribirán los campos actuales con estos nuevos valores.
+                    </p>
+                </div>
+             </div>
+           )}
+        </div>
+      </Modal>
+
+      {/* Reference Post Selector Modal */}
+      <Modal
+        isOpen={showRefSelector}
+        onClose={() => setShowRefSelector(false)}
+        title="Seleccionar Post como Esquema"
+        description={`Cargando posts de la colección '${post.collection}' para usar sus campos como referencia.`}
+        footer={
+           <button
+             onClick={() => setShowRefSelector(false)}
+             className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
+           >
+             Cancelar
+           </button>
+        }
+      >
+        <div className="space-y-4">
+           <input
+             type="text"
+             placeholder="Filtrar por título o archivo..."
+             value={searchTerm}
+             onChange={(e) => setSearchTerm(e.target.value)}
+             className="w-full bg-background border border-input rounded p-2 text-sm text-foreground focus:border-indigo-500 outline-none"
+           />
+           
+           <div className="max-h-64 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+             {loadingPosts ? (
+               <div className="text-center py-8">
+                  <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                  <p className="text-xs text-muted-foreground">Buscando posts en el repositorio...</p>
+               </div>
+             ) : (
+               importablePosts
+                  .filter(p => 
+                    p.collection === post.collection && // Misma colección
+                    (p.metadata.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                     p.filePath.toLowerCase().includes(searchTerm.toLowerCase()))
+                  )
+                  .map(p => (
+                  <button
+                    key={p._id}
+                    onClick={() => {
+                        setReferencePost(p);
+                        setShowRefSelector(false);
+                    }}
+                    className="w-full text-left p-3 rounded bg-card border border-border hover:border-indigo-500/50 hover:bg-muted transition-all group"
+                  >
+                    <div className="font-medium text-foreground group-hover:text-indigo-500 transition-colors">
+                      {p.metadata.title || "Sin título"}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-mono">
+                            {Object.keys(p.metadata).length} campos
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-mono truncate">
+                            {p.filePath.split('/').pop()}
+                        </span>
+                    </div>
+                  </button>
+                ))
+             )}
+             {!loadingPosts && importablePosts.filter(p => p.collection === post.collection).length === 0 && (
+                <div className="text-center py-8 bg-muted/20 border border-dashed border-border rounded-md">
+                   <p className="text-sm text-muted-foreground">No se encontraron otros posts en esta colección.</p>
+                </div>
+             )}
+           </div>
+        </div>
       </Modal>
     </>
   );

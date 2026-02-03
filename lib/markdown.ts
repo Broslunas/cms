@@ -25,10 +25,7 @@ export function serializeMarkdown(metadata: Record<string, any>, content: string
 
   // Hack temporal: gray-matter con js-yaml a veces no expone bien el estilo flow específico por tipo.
   // Pero podemos intentar pasar flowLevel.
-  return matter.stringify(content, metadata, {
-     // @ts-ignore - gray-matter types might not include js-yaml dump options
-     flowLevel: 1 
-  });
+  return matter.stringify(content, metadata);
 }
 
 /**
