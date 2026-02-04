@@ -36,6 +36,7 @@ interface PostEditorProps {
   post: Post;
   schema: Schema | null;
   isNew?: boolean;
+  templatePosts?: Post[];
 }
 
 function JsonFieldEditor({ fieldKey, value, onChange, onDelete, isComplexArray = false }: { fieldKey: string, value: any, onChange: (val: any) => void, onDelete: () => void, isComplexArray?: boolean }) {
@@ -454,7 +455,7 @@ function SectionsEditor({ fieldKey, value, onChange, onDelete }: { fieldKey: str
     );
   }
 
-export default function PostEditor({ post, schema, isNew = false }: PostEditorProps) {
+export default function PostEditor({ post, schema, isNew = false, templatePosts = [] }: PostEditorProps) {
   const [metadata, setMetadata] = useState<PostMetadata>(post.metadata);
   const [content, setContent] = useState(post.content);
   const [createFilePath, setCreateFilePath] = useState(
@@ -497,6 +498,7 @@ export default function PostEditor({ post, schema, isNew = false }: PostEditorPr
   const [referencePost, setReferencePost] = useState<Post | null>(null);
   const [showRefSelector, setShowRefSelector] = useState(false);
 
+  const [showTemplateModal, setShowTemplateModal] = useState(isNew && templatePosts.length > 0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
@@ -551,8 +553,19 @@ export default function PostEditor({ post, schema, isNew = false }: PostEditorPr
     });
 
     setMetadata(newMetadata);
+
+    if (isNew) {
+        const lastSlashIndex = sourcePost.filePath.lastIndexOf("/");
+        if (lastSlashIndex !== -1) {
+            const folderPath = sourcePost.filePath.substring(0, lastSlashIndex);
+            // Mantener el nombre de archivo actual ("untitled.md" u otro que haya escrito el usuario)
+            const currentFileName = createFilePath.split("/").pop() || "untitled.md";
+            setCreateFilePath(`${folderPath}/${currentFileName}`);
+        }
+    }
+
     setShowImportModal(false);
-    toast.success("Metadatos importados. Revisa el título.");
+    toast.success("Metadatos y ruta importados. Revisa el título.");
   };
 
   const handleDeleteField = (key: string) => {
@@ -668,10 +681,7 @@ export default function PostEditor({ post, schema, isNew = false }: PostEditorPr
   };
 
   const handleSave = async (commitToGitHub: boolean = false) => {
-    if (!canEdit) {
-        toast.error("No tienes permisos para editar este post");
-        return;
-    }
+
 
     if (commitToGitHub) {
       setCommitting(true);
@@ -1527,6 +1537,54 @@ export default function PostEditor({ post, schema, isNew = false }: PostEditorPr
       </Modal>
 
       {/* Import Metadata Modal */}
+       <Modal
+        isOpen={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
+        title="Elige una Plantilla"
+        description={`Selecciona un post existente de la colección "${post.collection}" para usarlo como base.`}
+        footer={
+           <button
+             onClick={() => setShowTemplateModal(false)}
+             className="w-full text-center text-sm text-muted-foreground hover:text-foreground py-2"
+           >
+             Empezar desde cero (sin plantilla)
+           </button>
+        }
+      >
+        <div className="space-y-4">
+           {/* List */}
+           <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+               {templatePosts.map(p => (
+                 <button
+                   key={p._id}
+                   onClick={() => {
+                        handleImportMetadata(p);
+                        setShowTemplateModal(false);
+                   }}
+                   className="w-full text-left p-4 rounded-lg bg-card border border-border hover:border-primary hover:bg-muted/50 transition-all group relative overflow-hidden"
+                 >
+                   <div className="flex justify-between items-start gap-4 z-10 relative">
+                       <div className="min-w-0">
+                            <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                                {p.metadata.title || "Sin título"}
+                            </h4>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">
+                                    {p.filePath}
+                                </span>
+                                {p.status === 'synced' && <span className="w-2 h-2 rounded-full bg-green-500" title="Sincronizado"/>}
+                            </div>
+                       </div>
+                       <div className="text-xs text-muted-foreground whitespace-nowrap">
+                           {new Date(p.metadata.date || Date.now()).toLocaleDateString()}
+                       </div>
+                   </div>
+                 </button>
+               ))}
+           </div>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}

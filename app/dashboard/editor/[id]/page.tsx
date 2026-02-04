@@ -30,17 +30,72 @@ export default async function EditorPage({
     }
 
     // Obtener todos los schemas disponibles para este repo
-    const schemas = await userCollection
+    let schemas = await userCollection
       .find({
         type: "schema",
         userId: session.user.id,
         repoId: repoId,
       })
       .toArray();
+    
+    // También buscar colecciones únicas usadas en los posts (para cuando no existen schemas explicítos)
+    const distinctCollections = await userCollection.distinct("collection", {
+      type: "post",
+      repoId: repoId,
+      userId: session.user.id
+    });
 
-    // Si no hay schemas, usar el default
+    // Normalizar colecciones de posts (remover nulls y "blog" si ya existe)
+    const postCollections = (distinctCollections as string[])
+        .filter(Boolean)
+        .map(c => c || "blog");
+    
+    // Combinar con schemas existentes
+    const knownSchemaNames = new Set(schemas.map(s => s.name));
+    
+    // Para cada colección encontrada en posts que no tenga schema, creamos uno "virtual"
+    for (const colName of postCollections) {
+        if (!knownSchemaNames.has(colName)) {
+            // Intentamos obtener un post reciente para inferir campos (opcional, para el selector)
+            const samplePost = await userCollection.findOne(
+                { type: "post", repoId, collection: colName },
+                { projection: { metadata: 1 } }
+            );
+            
+            // Inferir campos simples
+            const inferredFields: any = {};
+            if (samplePost?.metadata) {
+                Object.keys(samplePost.metadata).forEach(k => {
+                    inferredFields[k] = { type: 'string', optional: true };
+                });
+            }
+
+            schemas.push({
+                _id: new ObjectId(),
+                type: "schema",
+                userId: session.user.id,
+                repoId,
+                name: colName,
+                fields: inferredFields,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
+            knownSchemaNames.add(colName);
+        }
+    }
+
+    // Si no hay schemas ni colecciones, usar el default
     if (schemas.length === 0) {
-      // Default schema fallback
+       schemas.push({
+         _id: new ObjectId(),
+         type: "schema",
+         userId: session.user.id,
+         repoId,
+         name: "blog",
+         fields: {},
+         createdAt: new Date(),
+         updatedAt: new Date()
+       });
     }
 
     // Determinar colección
@@ -48,7 +103,7 @@ export default async function EditorPage({
 
     // Si no hay colección seleccionada
     if (!selectedCollection) {
-      // Si solo hay un schema, usar ese automáticamente
+      // Si solo hay un schema (colección), usar ese automáticamente
       if (schemas.length === 1) {
         selectedCollection = schemas[0].name;
       } else if (schemas.length > 1) {
@@ -63,13 +118,56 @@ export default async function EditorPage({
           />
         );
       } else {
-        // Fallback si no hay schemas detectados (ej: repo vacío o sin config)
         selectedCollection = "blog";
       }
     }
 
-    // Encontrar el schema seleccionado
-    const selectedSchema = schemas.find(s => s.name === selectedCollection) || null;
+    // Encontrar el schema seleccionado (ahora incluye los virtuales)
+    let selectedSchema = schemas.find(s => s.name === selectedCollection) || null;
+
+    // Obtener posts existentes de esta colección para usarlos como plantilla
+    const templatePosts = await userCollection
+      .find({
+        type: "post",
+        repoId: repoId,
+        collection: selectedCollection
+      })
+      .sort({ updatedAt: -1 })
+      .limit(20)
+      .toArray();
+
+    // Si tenemos templates pero no un schema real (o es muy básico), intentamos mejorar el schema inferido
+    if ((!selectedSchema || Object.keys(selectedSchema.fields).length === 0) && templatePosts.length > 0) {
+        const inferredFields: any = {};
+        // Usar el primer post como referencia
+        if (templatePosts[0].metadata) {
+             Object.keys(templatePosts[0].metadata).forEach(k => {
+                 const value = templatePosts[0].metadata[k];
+                 let type = typeof value;
+                 if (Array.isArray(value)) type = "array";
+                 
+                 inferredFields[k] = { type: type, optional: true };
+             });
+        }
+        
+        // Crear un objeto schema si no existía o actualizar sus campos
+        if (!selectedSchema) {
+            selectedSchema = { fields: inferredFields } as any; // Mock parcial
+        } else {
+            selectedSchema.fields = inferredFields;
+        }
+    }
+
+    // Serializar templatePosts
+    const serializedTemplates = templatePosts.map(p => ({
+        _id: p._id.toString(),
+        repoId: p.repoId,
+        filePath: p.filePath,
+        metadata: p.metadata,
+        content: p.content,
+        status: p.status,
+        collection: p.collection,
+    }));
 
     // Construir post vacío
     const emptyPost = {
@@ -88,6 +186,7 @@ export default async function EditorPage({
             post={emptyPost} 
             schema={selectedSchema?.fields || null} 
             isNew={true}
+            templatePosts={serializedTemplates}
         />
       </div>
     );
