@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 import Modal from "./Modal";
+import { SocialLinksEditor } from "./SocialLinksEditor";
 
 interface PostMetadata {
   [key: string]: any;
@@ -828,6 +829,31 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
 
   const renderField = (key: string, value: any) => {
     // Arrays especiales (como transcription)
+    if (key === 'social' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        return (
+            <div key={key}>
+                <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-foreground capitalize">
+                    {key} <span className="text-xs text-muted-foreground font-normal">(Redes Sociales)</span>
+                    </label>
+                    <button 
+                    onClick={() => handleDeleteField(key)} 
+                    className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                    title={`Eliminar campo ${key}`}
+                    >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    </button>
+                </div>
+                <SocialLinksEditor 
+                    value={value}
+                    onChange={(val) => updateMetadata(key, val)}
+                />
+            </div>
+        );
+    }
+
     if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object") {
       // Check for Transcription format (time + text)
       const isTranscription = value.every(item => 'time' in item && 'text' in item);
