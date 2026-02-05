@@ -100,8 +100,10 @@ export async function POST(req: Request) {
 
     // 5. Invite to GitHub repository
     let githubInviteStatus = null;
-    const targetGithubUsername = targetUser.username;
+    const targetGithubUsername = targetUser.username || targetUser.name; // Fallback to name if username not found
     
+    console.log(`Attempting to invite ${targetGithubUsername} to ${repoId}`);
+
     if (targetGithubUsername && session.access_token) {
       try {
         const [owner, repo] = repoId.split("/");
@@ -115,19 +117,26 @@ export async function POST(req: Request) {
           "push" // Grant write access
         );
         
+        console.log(`GitHub invitation successfully sent to ${targetGithubUsername}`);
         githubInviteStatus = {
           success: true,
           message: "GitHub invitation sent"
         };
       } catch (error: any) {
         console.error("Error inviting to GitHub:", error);
-        // Don't fail the whole operation if GitHub invite fails
         githubInviteStatus = {
           success: false,
           error: error.message || "Failed to send GitHub invitation",
-          code: error.status
+          code: error.status,
+          targetUser: targetGithubUsername
         };
       }
+    } else {
+        console.warn(`Cannot invite to GitHub: missing username or access token. Username: ${targetGithubUsername}, Token: ${!!session.access_token}`);
+        githubInviteStatus = {
+            success: false,
+            error: "Could not resolve GitHub username for invitation."
+        };
     }
 
     return NextResponse.json({ 

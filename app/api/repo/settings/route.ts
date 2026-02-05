@@ -50,6 +50,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ 
         uniqueId: project._id,
         vercelConfig: project.vercelConfig || {},
+        collaborators: project.collaborators || [], // Add this
         isShared // Frontend can use this to disable editing
     });
 

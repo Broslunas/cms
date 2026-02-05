@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { signOut } from "next-auth/react";
 
 interface GitHubInvitation {
   id: number;
@@ -25,128 +26,112 @@ interface RepoInvitationAlertProps {
 }
 
 export function RepoInvitationAlert({ repoId }: RepoInvitationAlertProps) {
-  const [invitation, setInvitation] = useState<GitHubInvitation | null>(null);
   const [loading, setLoading] = useState(true);
-  const [accepting, setAccepting] = useState(false);
-  const [accepted, setAccepted] = useState(false);
+  const [visibleRepos, setVisibleRepos] = useState<string[]>([]);
+  const [githubUser, setGithubUser] = useState<string | null>(null);
+  const [scopeError, setScopeError] = useState(false);
 
   useEffect(() => {
-    checkForInvitation();
+    checkAccess();
   }, [repoId]);
 
-  const checkForInvitation = async () => {
+  const checkAccess = async () => {
     try {
-      const res = await fetch("/api/github/invitations");
+      const res = await fetch(`/api/github/invitations?repoId=${encodeURIComponent(repoId)}`);
       if (res.ok) {
         const data = await res.json();
-        // Find invitation for this specific repo
-        const matchingInvitation = data.invitations?.find(
-          (inv: GitHubInvitation) => inv.repository.full_name === repoId
-        );
-        
-        if (matchingInvitation) {
-          setInvitation(matchingInvitation);
-          // Auto-accept if requested by logic
-          await acceptInvitation(matchingInvitation.id);
+        setVisibleRepos(data.visibleRepos || []);
+        setGithubUser(data.githubUser);
+      } else {
+        const data = await res.json();
+        if (data.code === "MISSING_SCOPE") {
+          setScopeError(true);
         }
       }
     } catch (error) {
-      console.error("Error checking invitations:", error);
+      console.error("Error checking access:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const acceptInvitation = async (id?: number) => {
-    const inviteId = id || invitation?.id;
-    if (!inviteId) return;
+  if (loading) return null;
 
-    setAccepting(true);
-    try {
-      const res = await fetch("/api/github/invitations/accept", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invitationId: inviteId }),
-      });
-
-      if (res.ok) {
-        setAccepted(true);
-        toast.success("¡Invitación aceptada! Ahora puedes publicar cambios en GitHub.");
-        // Wait a bit then hide the alert
-        setTimeout(() => setInvitation(null), 3000);
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Error al aceptar la invitación");
-      }
-    } catch (error) {
-      toast.error("Error al aceptar la invitación");
-    } finally {
-      setAccepting(false);
-    }
-  };
-
-  if (loading) {
-    return null; // Don't show anything while loading
+  if (scopeError) {
+    return (
+      <Card className="border-red-500/50 bg-red-500/10 mb-6 font-primary">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-4">
+            <div className="rounded-full bg-red-500/20 p-2">
+              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <h3 className="font-semibold text-red-700 dark:text-red-400">Permisos de GitHub Insuficientes</h3>
+              <p className="text-sm text-muted-foreground">
+                Para colaborar en este repositorio, el CMS necesita permisos para gestionar tus invitaciones. 
+              </p>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={() => signOut({ callbackUrl: "/" })}
+              >
+                Cerrar sesión y volver a entrar
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
-  if (!invitation || accepted) {
-    return null;
-  }
+  const isCollaborator = visibleRepos.some(r => r.toLowerCase() === repoId.toLowerCase());
+  
+  // Si ya es colaborador, no mostramos nada
+  if (isCollaborator) return null;
 
+  // Si no es colaborador, mostramos el aviso para aceptar la invitación
   return (
-    <Card className="border-blue-500/50 bg-blue-500/10">
+    <Card className="border-amber-500/50 bg-amber-500/10 mb-6 font-primary overflow-hidden relative">
+      <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
       <CardContent className="pt-6">
         <div className="flex items-start gap-4">
-          <div className="rounded-full bg-blue-500/20 p-2">
-            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <div className="rounded-full bg-amber-500/20 p-2">
+            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
           </div>
           
           <div className="flex-1 space-y-3">
             <div>
-              <h3 className="font-semibold text-foreground mb-1">
-                Invitación Pendiente de GitHub
+              <h3 className="font-bold text-amber-900 dark:text-amber-400 mb-1 text-lg">
+                Faltan permisos de edición
               </h3>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium">{invitation.inviter.login}</span> te ha invitado a colaborar en{" "}
-                <span className="font-medium font-mono text-xs">{invitation.repository.full_name}</span>.
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Necesitas aceptar esta invitación para poder publicar cambios en GitHub.
+              <p className="text-sm text-amber-800/80 dark:text-amber-400/80 max-w-2xl">
+                Parece que aún no has aceptado la invitación de GitHub para colaborar en <span className="font-mono font-bold">{repoId}</span>. 
+                Sin esto, no podrás guardar cambios ni publicar contenido.
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
               <Button
-                onClick={() => acceptInvitation()}
-                disabled={accepting}
-                className="gap-2"
-              >
-                {accepting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Aceptando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4" />
-                    Aceptar Invitación
-                  </>
-                )}
-              </Button>
-
-              <Button
-                variant="outline"
                 asChild
+                className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-lg shadow-amber-600/20"
               >
                 <a
-                  href={invitation.repository.html_url}
+                  href={`https://github.com/${repoId}/invitations`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="gap-2"
                 >
-                  Ver en GitHub
                   <ExternalLink className="h-4 w-4" />
+                  Aceptar invitación en GitHub
                 </a>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.location.reload()}
+                className="text-amber-700 hover:bg-amber-500/10"
+              >
+                Ya la acepté, refrescar
               </Button>
             </div>
           </div>

@@ -286,6 +286,19 @@ export function VercelWidget({ repoId }: { repoId: string }) {
                                 </CardContent>
                              </Card>
                         )}
+
+                        <Card className="bg-blue-500/5 border-blue-500/10 shadow-none">
+                            <CardContent className="pt-4 flex gap-3 items-start">
+                                <Globe className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+                                <div className="space-y-1">
+                                    <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">Recordatorio de Vercel</p>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                        Si usas una cuenta gratuita de Vercel, el repositorio **debe ser público** para que las builds se ejecuten correctamente. 
+                                        Los repositorios privados requieren un plan **Pro** o **Enterprise**.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
                         
                         <div className="space-y-4">
                             <h3 className="font-medium">Configuration</h3>

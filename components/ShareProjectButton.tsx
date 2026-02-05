@@ -151,6 +151,14 @@ export default function ShareProjectButton({ repoId, repoName }: ShareProjectBut
                     </div>
                 )}
             </div>
+
+            <div className="pt-2">
+                <div className="p-3 border border-amber-500/30 bg-amber-500/5 rounded-lg flex gap-3 text-xs text-amber-700 dark:text-amber-500 italic">
+                    <p>
+                        <strong>Nota importante:</strong> Si usas Vercel (Plan Free), el repositorio debe ser <strong>Público</strong> para que la build se ejecute correctamente. Los repositorios privados requieren Vercel Pro o Enterprise.
+                    </p>
+                </div>
+            </div>
         </div>
       </Modal>
     </>
