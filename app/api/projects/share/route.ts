@@ -65,7 +65,14 @@ export async function POST(req: Request) {
     const targetCollection = db.collection(getUserCollectionName(targetUserId));
 
     // 3. Add to collaborators list in Owner's project
-    // We store minimal info to display in the UI
+    // We remove existing entry for this user first to avoid duplicates (idempotent)
+    await myCollection.updateOne(
+        { type: "project", repoId },
+        { 
+            $pull: { collaborators: { userId: targetUserId } } as any
+        }
+    );
+
     const collaboratorInfo = {
         userId: targetUserId,
         email: targetUser.email,
@@ -77,10 +84,10 @@ export async function POST(req: Request) {
     await myCollection.updateOne(
         { type: "project", repoId },
         { 
-            $addToSet: { 
+            $push: { 
                 collaborators: collaboratorInfo
             } 
-        }
+        } as any
     );
 
     // 4. Add reference to Target's collection
