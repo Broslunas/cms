@@ -22,7 +22,26 @@ export async function GET(req: Request) {
     const db = client.db(DB_NAME);
     const userCollection = db.collection(getUserCollectionName(session.user.id));
 
-    const project = await userCollection.findOne({ type: "project", repoId: repoId });
+    // Try to find the project in user's own collection first
+    let project = await userCollection.findOne({ type: "project", repoId: repoId });
+    let ownerCollection = userCollection;
+
+    // If not found, check if this is a shared project
+    if (!project) {
+        const sharedRef = await userCollection.findOne({ 
+            type: "shared_project_reference", 
+            repoId 
+        });
+
+        if (sharedRef) {
+            // Access the owner's collection to get the project configuration
+            ownerCollection = db.collection(getUserCollectionName(sharedRef.ownerId));
+            project = await ownerCollection.findOne({ 
+                type: "project", 
+                repoId: repoId 
+            });
+        }
+    }
 
     if (!project) {
         return NextResponse.json({ error: "Project not found" }, { status: 404 });
@@ -33,7 +52,8 @@ export async function GET(req: Request) {
     const projectId = vercelConfig.projectId;
 
     if (vercelConfig.useGlobalToken) {
-        const settings = await userCollection.findOne({ type: "settings" });
+        // Use the owner's global token (from owner's settings)
+        const settings = await ownerCollection.findOne({ type: "settings" });
         if (settings?.vercelGlobalToken) {
             token = settings.vercelGlobalToken;
         }

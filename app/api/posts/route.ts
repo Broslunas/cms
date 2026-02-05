@@ -34,17 +34,34 @@ export async function GET(request: Request) {
     }
 
     // 2. Search by Repo ID (List posts)
-    const filter: any = { 
-        type: "post",
-        userId: session.user.id 
-    };
-    
+    // 2. Search by Repo ID (List posts)
+    let targetCollection = userCollection;
+    let postFilter: any = { type: "post" };
+
     if (repoId) {
-        filter.repoId = repoId;
+       postFilter.repoId = repoId;
+
+       // Check if this is a shared project
+       const sharedRef = await userCollection.findOne({ 
+           type: "shared_project_reference", 
+           repoId 
+       });
+
+       if (sharedRef) {
+           // Switch to owner's collection
+           targetCollection = db.collection(getUserCollectionName(sharedRef.ownerId));
+           // No userId filter needed here as we are in owner's collection and filtering by repoId
+       } else {
+           // Own project: ensure we only see our own posts
+           postFilter.userId = session.user.id;
+       }
+    } else {
+        // List ALL posts (only own posts)
+        postFilter.userId = session.user.id;
     }
 
-    const posts = await userCollection
-      .find(filter)
+    const posts = await targetCollection
+      .find(postFilter)
       .sort({ updatedAt: -1 })
       .toArray();
 

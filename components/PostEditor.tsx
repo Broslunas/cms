@@ -690,6 +690,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           postId: post._id,
+          repoId: post.repoId,
           deleteFromGitHub: deleteFromGitHub && currentSha, 
         }),
       });
@@ -835,6 +836,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       } else {
          body = {
             postId: post._id,
+            repoId: post.repoId,
             metadata,
             content,
             commitToGitHub,

@@ -22,19 +22,33 @@ export async function POST(request: NextRequest) {
     const db = client.db(DB_NAME);
     const userCollection = db.collection(getUserCollectionName(session.user.id));
     
+    let targetCollection = userCollection;
+    let effectiveUserId = session.user.id; // The 'owner' of the data
+
     // Check if repo is owned or shared
     // First check if we have a project for it in our own collection
     const ownProject = await userCollection.findOne({ type: "project", repoId });
     
     if (!ownProject) {
-        return NextResponse.json({ error: "Repository access denied" }, { status: 403 });
+        // Check for shared reference
+        const sharedRef = await userCollection.findOne({ 
+           type: "shared_project_reference", 
+           repoId 
+        });
+
+        if (sharedRef) {
+            targetCollection = db.collection(getUserCollectionName(sharedRef.ownerId));
+            effectiveUserId = sharedRef.ownerId;
+        } else {
+            return NextResponse.json({ error: "Repository access denied" }, { status: 403 });
+        }
     }
 
     // Verificar si ya existe un post con ese filePath en ese repo
-    const existingPost = await userCollection.findOne({
+    const existingPost = await targetCollection.findOne({
       repoId,
       filePath,
-      userId: session.user.id,
+      userId: effectiveUserId,
       type: "post",
     });
 
@@ -45,7 +59,8 @@ export async function POST(request: NextRequest) {
     // Preparar el nuevo documento
     const newPost: any = {
       type: "post",
-      userId: session.user.id,
+      userId: effectiveUserId, // Always set to Data Owner logic
+      authorId: session.user.id, // Audit who actually created it
       repoId,
       collection,
       filePath,
@@ -92,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insertar en MongoDB
-    const result = await userCollection.insertOne(newPost);
+    const result = await targetCollection.insertOne(newPost);
 
     const [owner, repo] = repoId.split("/");
     

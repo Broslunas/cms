@@ -21,15 +21,36 @@ export async function GET(req: Request) {
     const db = client.db(DB_NAME);
     const userCollection = db.collection(getUserCollectionName(session.user.id));
 
-    const project = await userCollection.findOne({ type: "project", repoId: repoId });
+    // Try to find the project in user's own collection first
+    let project = await userCollection.findOne({ type: "project", repoId: repoId });
+    let isShared = false;
+
+    // If not found, check if this is a shared project
+    if (!project) {
+        const sharedRef = await userCollection.findOne({ 
+            type: "shared_project_reference", 
+            repoId 
+        });
+
+        if (sharedRef) {
+            // Access the owner's collection to get the project configuration
+            const ownerCollection = db.collection(getUserCollectionName(sharedRef.ownerId));
+            project = await ownerCollection.findOne({ 
+                type: "project", 
+                repoId: repoId 
+            });
+            isShared = true;
+        }
+    }
 
     if (!project) {
         return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
     return NextResponse.json({ 
-        uniqueId: project._id, // Just to have an ID
-        vercelConfig: project.vercelConfig || {} 
+        uniqueId: project._id,
+        vercelConfig: project.vercelConfig || {},
+        isShared // Frontend can use this to disable editing
     });
 
   } catch (error) {
@@ -56,6 +77,18 @@ export async function PATCH(req: Request) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const userCollection = db.collection(getUserCollectionName(session.user.id));
+
+    // Check if this is a shared project (user cannot modify settings for shared projects)
+    const sharedRef = await userCollection.findOne({ 
+        type: "shared_project_reference", 
+        repoId 
+    });
+
+    if (sharedRef) {
+        return NextResponse.json({ 
+            error: "Cannot modify settings for shared repositories. Only the owner can configure deployments." 
+        }, { status: 403 });
+    }
 
     // Construct the $set object
     const finalUpdate: any = {};

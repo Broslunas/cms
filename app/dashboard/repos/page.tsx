@@ -42,8 +42,26 @@ export default async function ReposPage({
   const db = client.db(DB_NAME);
   const userCollection = db.collection(getUserCollectionName(session.user.id));
   
-  let posts: any[] = await userCollection
-    .find({ type: "post", repoId })
+  let targetCollection = userCollection;
+  let postQuery: any = { type: "post", repoId };
+
+  // Check if this is a shared project
+  const sharedRef = await userCollection.findOne({ 
+      type: "shared_project_reference", 
+      repoId 
+  });
+
+  if (sharedRef) {
+       // Switch to owner's collection
+       targetCollection = db.collection(getUserCollectionName(sharedRef.ownerId));
+       // No userId filter needed here as we are in owner's collection and filtering by repoId
+  } else {
+       // Own project
+       postQuery.userId = session.user.id;
+  }
+
+  let posts: any[] = await targetCollection
+    .find(postQuery)
     .sort({ updatedAt: -1 })
     .toArray();
 
@@ -124,7 +142,7 @@ export default async function ReposPage({
               {posts.map((post: any) => (
                 <Link
                   key={post._id.toString()}
-                  href={`/dashboard/editor/${post._id.toString()}`}
+                  href={`/dashboard/editor/${post._id.toString()}?repo=${encodeURIComponent(post.repoId)}`}
                   className="block group"
                 >
                   <Card className="p-4 transition-all hover:bg-muted/50 hover:border-primary/50">

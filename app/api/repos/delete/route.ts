@@ -21,7 +21,19 @@ export async function POST(request: NextRequest) {
     const db = client.db(DB_NAME);
     const userCollection = db.collection(getUserCollectionName(session.user.id));
 
-    // 1. Obtener el proyecto para saber qué repoId es (para borrar los posts también)
+    // 1. Intentar encontrar como referencia compartida primero
+    const sharedRef = await userCollection.findOne({
+        _id: new ObjectId(projectId),
+        type: "shared_project_reference"
+    });
+
+    if (sharedRef) {
+        // Es un proyecto compartido, solo eliminamos la referencia ("Salimos" del proyecto)
+        await userCollection.deleteOne({ _id: new ObjectId(projectId) });
+        return NextResponse.json({ success: true });
+    }
+
+    // 2. Si no es compartido, buscar como proyecto propio
     const project = await userCollection.findOne({
       _id: new ObjectId(projectId),
       type: "project"
@@ -33,20 +45,20 @@ export async function POST(request: NextRequest) {
 
     const repoId = project.repoId;
 
-    // 2. Eliminar el proyecto
+    // 3. Eliminar el proyecto
     await userCollection.deleteOne({
       _id: new ObjectId(projectId),
       type: "project"
     });
 
-    // 3. Eliminar todos los posts asociados a este proyecto/repo
+    // 4. Eliminar todos los posts asociados a este proyecto/repo
     // Nota: Esto solo elimina los posts de la base de datos local del usuario, no de GitHub.
     await userCollection.deleteMany({
       type: "post",
       repoId: repoId
     });
 
-    // 4. Eliminar schemas asociados si los hay
+    // 5. Eliminar schemas asociados si los hay
     await userCollection.deleteMany({
         type: "schema",
         repoId: repoId

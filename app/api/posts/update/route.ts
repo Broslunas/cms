@@ -14,22 +14,32 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { postId, metadata, content, commitToGitHub } = await request.json();
+    const { postId, repoId, metadata, content, commitToGitHub } = await request.json();
 
     if (!postId) {
       return NextResponse.json({ error: "Post ID is required" }, { status: 400 });
     }
 
-    // Ya no validamos estrictamente con PostMetadataSchema para permitir borradores
-    // y edición de posts antiguos o incompletos.
-    // La validación de tipos se maneja en el frontend.
-
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const userCollection = db.collection(getUserCollectionName(session.user.id));
+    
+    let targetCollection = userCollection;
+
+    // Resolve collection if repoId is provided
+    if (repoId) {
+        const sharedRef = await userCollection.findOne({ 
+           type: "shared_project_reference", 
+           repoId 
+        });
+
+        if (sharedRef) {
+            targetCollection = db.collection(getUserCollectionName(sharedRef.ownerId));
+        }
+    }
 
     // Obtener el post actual
-    const post = await userCollection.findOne({
+    const post = await targetCollection.findOne({
       _id: new ObjectId(postId),
       type: "post",
     });
@@ -39,7 +49,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 1. Actualizar en MongoDB primero
-    await userCollection.updateOne(
+    await targetCollection.updateOne(
       { _id: new ObjectId(postId), type: "post" },
       {
         $set: {
@@ -71,7 +81,7 @@ export async function PUT(request: NextRequest) {
       );
 
       // Actualizar el SHA en MongoDB
-      await userCollection.updateOne(
+      await targetCollection.updateOne(
         { _id: new ObjectId(postId), type: "post" },
         {
           $set: {

@@ -45,6 +45,9 @@ export function VercelWidget({ repoId }: { repoId: string }) {
   const [globalTokenDisplay, setGlobalTokenDisplay] = useState<string | null>(null);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
   
+  // Shared repo tracking
+  const [isSharedRepo, setIsSharedRepo] = useState(false);
+  
   // Global Token Management
   const [isEditingGlobal, setIsEditingGlobal] = useState(false);
   const [newGlobalToken, setNewGlobalToken] = useState("");
@@ -149,6 +152,7 @@ export function VercelWidget({ repoId }: { repoId: string }) {
               setProjectId(data.vercelConfig?.projectId || "");
               setToken(data.vercelConfig?.token || "");
               setUseGlobalToken(!!data.vercelConfig?.useGlobalToken);
+              setIsSharedRepo(!!data.isShared); // Track if this is a shared repo
           }
       } catch (e) {
           console.error("Failed to fetch repo settings");
@@ -288,6 +292,46 @@ export function VercelWidget({ repoId }: { repoId: string }) {
                             
                             {isLoadingSettings ? (
                                 <div className="flex justify-center p-4"><Loader2 className="animate-spin" /></div>
+                            ) : isSharedRepo ? (
+                                // Read-only view for shared repositories
+                                <div className="space-y-4">
+                                    <Card className="bg-blue-500/10 border-blue-500/20 shadow-none">
+                                        <CardContent className="pt-6">
+                                            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-2">
+                                                <Lock className="h-5 w-5" />
+                                                <span className="font-semibold">Shared Repository</span>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">
+                                                This repository is shared with you. The deployment configuration is managed by the repository owner.
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+
+                                    {projectId && (
+                                        <div className="space-y-2">
+                                            <Label>Vercel Project ID (Read-only)</Label>
+                                            <Input 
+                                                value={projectId} 
+                                                disabled
+                                                className="bg-muted/50"
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="bg-secondary/20 p-4 rounded-md border">
+                                        <p className="text-sm text-muted-foreground">
+                                            {useGlobalToken ? "Using owner's global token" : "Using owner's project-specific token"}
+                                        </p>
+                                    </div>
+
+                                    <Button 
+                                        variant="outline" 
+                                        className="w-full" 
+                                        onClick={() => setShowSettings(false)}
+                                    >
+                                        Close Settings
+                                    </Button>
+                                </div>
                             ) : (
                                 <>
                                     <div className="space-y-2">

@@ -23,17 +23,34 @@ export default async function EditorPage({
   const db = client.db(DB_NAME);
   const userCollection = db.collection(getUserCollectionName(session.user.id));
 
+  // Helper function to resolve collection
+  const getTargetCollection = async (repoId: string | undefined) => {
+    if (!repoId) return userCollection;
+    
+    const sharedRef = await userCollection.findOne({ 
+       type: "shared_project_reference", 
+       repoId 
+    });
+
+    if (sharedRef) {
+        return db.collection(getUserCollectionName(sharedRef.ownerId));
+    }
+    return userCollection;
+  };
+
+  const targetCollection = await getTargetCollection(repoId);
+
   // --- MODO CREACIÓN (Nuevo Post) ---
   if (id === "new") {
     if (!repoId) {
       redirect("/dashboard");
     }
 
-    // Obtener todos los schemas disponibles para este repo
-    let schemas = await userCollection
+    // Obtener todos los schemas disponibles para este repo (from target collection)
+    // Note: If shared, we read schemas from OWNER
+    let schemas = await targetCollection
       .find({
         type: "schema",
-        userId: session.user.id,
         repoId: repoId,
       })
       .toArray();
@@ -41,14 +58,14 @@ export default async function EditorPage({
     // Eliminar schemas sin nombre válido
     schemas = schemas.filter(s => s.name && s.name.trim() !== "");
     
-    // También buscar colecciones únicas usadas en los posts (para cuando no existen schemas explicítos)
-    // Usamos aggregate en lugar de distinct porque distinct no está soportado en API Strict v1
-    const distinctCollectionsRaw = await userCollection.aggregate([
+    // También buscar colecciones únicas usadas en los posts
+    const distinctCollectionsRaw = await targetCollection.aggregate([
       { 
         $match: { 
           type: "post", 
           repoId: repoId, 
-          userId: session.user.id 
+          // userId query removed here because we are in target collection (which might be owner's)
+          // we assume if it's shared, we can see all posts in that repo
         } 
       },
       {
@@ -70,7 +87,7 @@ export default async function EditorPage({
     for (const colName of postCollections) {
         if (!knownSchemaNames.has(colName)) {
             // Intentamos obtener un post reciente para inferir campos (opcional, para el selector)
-            const samplePost = await userCollection.findOne(
+            const samplePost = await targetCollection.findOne(
                 { type: "post", repoId, collection: colName },
                 { projection: { metadata: 1 } }
             );
@@ -132,7 +149,7 @@ export default async function EditorPage({
     let selectedSchema = schemas.find(s => s.name === selectedCollection) || null;
 
     // Obtener posts existentes de esta colección para usarlos como plantilla
-    const templatePosts = await userCollection
+    const templatePosts = await targetCollection
       .find({
         type: "post",
         repoId: repoId,
@@ -200,11 +217,10 @@ export default async function EditorPage({
 
   // --- MODO EDICIÓN (Post Existente) ---
   
-  // Obtener el post de la colección del usuario
-  const post = await userCollection.findOne({
+  // Obtener el post de la colección del usuario (o del owner si es compartido)
+  const post = await targetCollection.findOne({
     _id: new ObjectId(id),
     type: "post",
-    userId: session.user.id,
   });
 
   if (!post) {
@@ -212,9 +228,8 @@ export default async function EditorPage({
   }
 
   // Obtener el schema de la colección
-  const schema = await userCollection.findOne({
+  const schema = await targetCollection.findOne({
     type: "schema",
-    userId: session.user.id,
     repoId: post.repoId,
     collectionName: post.collection || "blog",
   });

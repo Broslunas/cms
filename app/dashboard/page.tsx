@@ -4,8 +4,9 @@ import clientPromise, { DB_NAME, getUserCollectionName } from "@/lib/mongodb";
 import { Link } from "next-view-transitions";
 import ImportButton from "@/components/ImportButton";
 import DeleteRepoButton from "@/components/DeleteRepoButton";
+import ShareProjectButton from "@/components/ShareProjectButton";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, RefreshCw, FolderGit2 } from "lucide-react";
+import { FileText, RefreshCw, FolderGit2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ObjectId } from "mongodb";
 
@@ -28,17 +29,54 @@ export default async function DashboardPage() {
   // 1. Fetch own projects
   const ownProjects = await userCollection
     .find({ type: "project" })
-    .sort({ updatedAt: -1 })
     .toArray();
 
+  // 2. Fetch shared references
+  const sharedRefs = await userCollection
+    .find({ type: "shared_project_reference" })
+    .toArray();
+
+  // 3. Resolve shared projects
+  const sharedProjectsPromises = sharedRefs.map(async (ref) => {
+      try {
+        const ownerCollection = db.collection(getUserCollectionName(ref.ownerId));
+        const project = await ownerCollection.findOne({ 
+          type: "project", 
+          repoId: ref.repoId 
+        });
+        
+        if (project) {
+          return {
+            ...project,
+            _id: ref._id, // Use reference ID for shared projects to allow "leaving" (deleting reference)
+            isShared: true,
+            sharedBy: ref.ownerId
+          };
+        }
+        return null;
+      } catch (error) {
+        return null;
+      }
+    });
+
+  const sharedProjects = (await Promise.all(sharedProjectsPromises)).filter(p => p !== null);
+
+  const allProjects = [...ownProjects, ...sharedProjects].sort((a: any, b: any) => {
+        const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return dateB - dateA;
+  });
+
   // Serializar proyectos para pasar al cliente
-  const serializedProjects = ownProjects.map((project: any) => ({
+  const serializedProjects = allProjects.map((project: any) => ({
     _id: project._id.toString(),
     repoId: project.repoId,
     name: project.name,
     description: project.description,
     postsCount: project.postsCount,
-    lastSync: project.lastSync.toISOString(),
+    lastSync: project.lastSync ? project.lastSync.toISOString() : new Date().toISOString(),
+    isShared: !!project.isShared,
+    sharedBy: project.sharedBy
   }));
 
   return (
@@ -51,9 +89,9 @@ export default async function DashboardPage() {
               Mis Proyectos
             </h2>
             <p className="text-muted-foreground mt-2 text-lg">
-              {ownProjects.length === 0
+              {allProjects.length === 0
                 ? "Comienza importando tu primer repositorio"
-                : `Gestionando ${ownProjects.length} ${ownProjects.length === 1 ? "proyecto activo" : "proyectos activos"}`}
+                : `Gestionando ${allProjects.length} ${allProjects.length === 1 ? "proyecto activo" : "proyectos activos"}`}
             </p>
           </div>
 
@@ -63,7 +101,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Projects Grid */}
-        {ownProjects.length === 0 ? (
+        {allProjects.length === 0 ? (
           <div className="text-center py-24 rounded-[2rem] border-2 border-dashed border-border/50 bg-card/30 backdrop-blur-sm">
             <div className="max-w-md mx-auto space-y-6">
               <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
@@ -84,7 +122,7 @@ export default async function DashboardPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {serializedProjects.map((project) => (
               <Link
-                key={project._id}
+                key={project.repoId} // Changed key to repoId as _id might collision/change easier or be from different collections? repoId is unique for display here
                 href={`/dashboard/repos?repo=${encodeURIComponent(project.repoId)}`}
                 className="block group h-full"
               >
@@ -92,16 +130,29 @@ export default async function DashboardPage() {
                   <CardHeader className="space-y-3 pb-4">
                     <div className="flex items-center justify-between">
                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                                <FolderGit2 className="h-5 w-5" />
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-300 ${project.isShared ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white' : 'bg-primary/10 border-primary/20 group-hover:bg-primary group-hover:text-white'}`}>
+                                {project.isShared ? <Users className="h-5 w-5" /> : <FolderGit2 className="h-5 w-5" />}
                             </div>
                        </div>
                        
                        <div className="flex items-center gap-2">
-                          <div className="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-1 rounded-md border border-primary/10">
-                            Active
-                          </div>
-                            <DeleteRepoButton projectId={project._id} repoName={project.name} />
+                          {project.isShared && (
+                              <div className="text-[10px] font-bold uppercase tracking-widest text-indigo-500 bg-indigo-500/10 px-2 py-1 rounded-md border border-indigo-500/10">
+                                Shared
+                              </div>
+                          )}
+                          {!project.isShared && (
+                              <div className="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-1 rounded-md border border-primary/10">
+                                Active
+                              </div>
+                          )}
+                            
+                            {!project.isShared && (
+                                <>
+                                    <ShareProjectButton repoId={project.repoId} repoName={project.name} />
+                                    <DeleteRepoButton projectId={project._id} repoName={project.name} />
+                                </>
+                            )}
                        </div>
                     </div>
                     <div className="space-y-1 pt-1">
