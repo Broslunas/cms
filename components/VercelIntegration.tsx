@@ -10,9 +10,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
     X, Settings, Loader2, CheckCircle2, XCircle, Clock, ExternalLink, 
-    Rocket, RefreshCw, AlertTriangle
+    Rocket, RefreshCw, AlertTriangle, Globe, Lock
 } from "lucide-react";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Deployment {
   uid: string;
@@ -38,6 +39,16 @@ export function VercelWidget({ repoId }: { repoId: string }) {
   // Settings Form State
   const [projectId, setProjectId] = useState("");
   const [token, setToken] = useState("");
+  
+  // Global Token State
+  const [useGlobalToken, setUseGlobalToken] = useState(false);
+  const [globalTokenDisplay, setGlobalTokenDisplay] = useState<string | null>(null);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  
+  // Global Token Management
+  const [isEditingGlobal, setIsEditingGlobal] = useState(false);
+  const [newGlobalToken, setNewGlobalToken] = useState("");
+
   const [saving, setSaving] = useState(false);
 
   const fetchData = async () => {
@@ -76,11 +87,68 @@ export function VercelWidget({ repoId }: { repoId: string }) {
     }
   };
 
+  const fetchGlobalSettings = async () => {
+      try {
+          const res = await fetch("/api/settings");
+          if (res.ok) {
+              const data = await res.json();
+              setGlobalTokenDisplay(data.vercelGlobalToken ? `...${data.vercelGlobalToken.slice(-5)}` : null);
+          }
+      } catch (e) {
+          console.error("Failed to fetch global settings");
+      }
+  };
+
+  const fetchRepoSettings = async () => {
+      setIsLoadingSettings(true);
+      try {
+          const res = await fetch(`/api/repo/settings?repoId=${encodeURIComponent(repoId)}`);
+          if (res.ok) {
+              const data = await res.json();
+              setProjectId(data.vercelConfig?.projectId || "");
+              setToken(data.vercelConfig?.token || "");
+              setUseGlobalToken(!!data.vercelConfig?.useGlobalToken);
+          }
+      } catch (e) {
+          console.error("Failed to fetch repo settings");
+      } finally {
+          setIsLoadingSettings(false);
+      }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchData();
+      fetchGlobalSettings();
     }
   }, [isOpen, repoId]);
+
+  useEffect(() => {
+      if (showSettings) {
+          fetchRepoSettings();
+      }
+  }, [showSettings]);
+
+  const handleSaveGlobal = async () => {
+      if (!newGlobalToken) return;
+      try {
+          const res = await fetch("/api/settings", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ vercelGlobalToken: newGlobalToken })
+          });
+          if (!res.ok) throw new Error("Failed");
+          
+          toast.success("Global token updated!");
+          setGlobalTokenDisplay(`...${newGlobalToken.slice(-5)}`);
+          setNewGlobalToken("");
+          setIsEditingGlobal(false);
+          // Auto-enable global token usage if updating
+          if (!globalTokenDisplay) setUseGlobalToken(true);
+      } catch (e) {
+          toast.error("Failed to update global token");
+      }
+  };
 
   const handleSaveSettings = async () => {
       setSaving(true);
@@ -91,16 +159,24 @@ export function VercelWidget({ repoId }: { repoId: string }) {
               body: JSON.stringify({
                   repoId,
                   vercelProjectId: projectId,
-                  vercelToken: token
+                  vercelToken: useGlobalToken ? undefined : token, // Don't save local token if using global, or keep it?
+                  // Better to keep the local token in state but flag determines usage.
+                  // Current code in API updates if not undefined. 
+                  // If we want to CLEAR local token, we'd need to send null or special value?
+                  // For now, let's just send what we have, but the useGlobalToken flag is what matters.
+                  // API will update `useGlobalToken`.
+                  useGlobalToken
               })
           });
           
           if (!res.ok) throw new Error("Failed to save");
           
           toast.success("Settings saved!");
-          setIsConfigured(true);
+          setIsConfigured(true); // Should verify, but optimistic is fine
           setShowSettings(false);
           fetchData(); // Reload deployments
+          // refetch settings to be sure
+          fetchRepoSettings();
       } catch (error) {
           toast.error("Failed to save settings");
       } finally {
@@ -168,33 +244,92 @@ export function VercelWidget({ repoId }: { repoId: string }) {
                         
                         <div className="space-y-4">
                             <h3 className="font-medium">Configuration</h3>
-                            <div className="space-y-2">
-                                <Label>Vercel Project ID</Label>
-                                <Input 
-                                    placeholder="prj_..." 
-                                    value={projectId} 
-                                    onChange={(e) => setProjectId(e.target.value)} 
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Found in Vercel Project Settings {'>'} General {'>'} Project ID
-                                </p>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Vercel User Token</Label>
-                                <Input 
-                                    type="password" 
-                                    placeholder="Enter your token" 
-                                    value={token} 
-                                    onChange={(e) => setToken(e.target.value)} 
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Create a personal access token in Vercel Account Settings
-                                </p>
-                            </div>
-                            <Button className="w-full" onClick={handleSaveSettings} disabled={saving}>
-                                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Save Integration
-                            </Button>
+                            
+                            {isLoadingSettings ? (
+                                <div className="flex justify-center p-4"><Loader2 className="animate-spin" /></div>
+                            ) : (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label>Vercel Project ID</Label>
+                                        <Input 
+                                            placeholder="prj_..." 
+                                            value={projectId} 
+                                            onChange={(e) => setProjectId(e.target.value)} 
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Found in Vercel Project Settings {'>'} General {'>'} Project ID
+                                        </p>
+                                    </div>
+
+                                    <div className="pt-2 border-t">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Checkbox 
+                                                id="use-global" 
+                                                checked={useGlobalToken}
+                                                onCheckedChange={(c) => setUseGlobalToken(!!c)}
+                                            />
+                                            <Label htmlFor="use-global" className="cursor-pointer">Use Global Token</Label>
+                                        </div>
+
+                                        {useGlobalToken ? (
+                                            <div className="bg-secondary/20 p-4 rounded-md border">
+                                                {globalTokenDisplay ? (
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2 text-sm text-green-600">
+                                                            <CheckCircle2 className="h-4 w-4" />
+                                                            <span>Token configured ({globalTokenDisplay})</span>
+                                                        </div>
+                                                        <Button variant="ghost" size="sm" onClick={() => setIsEditingGlobal(!isEditingGlobal)}>
+                                                            Edit
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2 text-sm text-yellow-600 mb-2">
+                                                        <AlertTriangle className="h-4 w-4" />
+                                                        <span>No global token set</span>
+                                                        <Button variant="link" size="sm" className="h-auto p-0 ml-auto" onClick={() => setIsEditingGlobal(true)}>
+                                                             Add Global Token
+                                                        </Button>
+                                                    </div>
+                                                )}
+
+                                                {isEditingGlobal && (
+                                                    <div className="mt-3 space-y-2">
+                                                        <Input 
+                                                            type="password"
+                                                            placeholder="New Global Token (ey...)"
+                                                            value={newGlobalToken}
+                                                            onChange={(e) => setNewGlobalToken(e.target.value)}
+                                                        />
+                                                        <div className="flex gap-2 justify-end">
+                                                            <Button size="sm" variant="ghost" onClick={() => setIsEditingGlobal(false)}>Cancel</Button>
+                                                            <Button size="sm" onClick={handleSaveGlobal} disabled={!newGlobalToken}>Save Global</Button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <Label>Project Access Token</Label>
+                                                <Input 
+                                                    type="password" 
+                                                    placeholder="Enter your token for this repo" 
+                                                    value={token} 
+                                                    onChange={(e) => setToken(e.target.value)} 
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    Specific token for this repository only.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <Button className="w-full mt-4" onClick={handleSaveSettings} disabled={saving}>
+                                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                        Save Integration
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     </div>
                 ) : (

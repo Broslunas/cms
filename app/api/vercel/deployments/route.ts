@@ -28,9 +28,18 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    const vercelConfig = project.vercelConfig;
+    const vercelConfig = project.vercelConfig || {};
+    let token = vercelConfig.token;
+    const projectId = vercelConfig.projectId;
 
-    if (!vercelConfig?.projectId || !vercelConfig?.token) {
+    if (vercelConfig.useGlobalToken) {
+        const settings = await userCollection.findOne({ type: "settings" });
+        if (settings?.vercelGlobalToken) {
+            token = settings.vercelGlobalToken;
+        }
+    }
+
+    if (!projectId || !token) {
         return NextResponse.json({ 
             notConfigured: true, 
             message: "Vercel integration not configured" 
@@ -38,9 +47,9 @@ export async function GET(req: Request) {
     }
 
     // 2. Fetch Deployments from Vercel API
-    const res = await fetch(`https://api.vercel.com/v6/deployments?projectId=${vercelConfig.projectId}&limit=5`, {
+    const res = await fetch(`https://api.vercel.com/v6/deployments?projectId=${projectId}&limit=5`, {
         headers: {
-            Authorization: `Bearer ${vercelConfig.token}`,
+            Authorization: `Bearer ${token}`,
         },
     });
 
