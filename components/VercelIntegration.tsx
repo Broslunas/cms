@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
     X, Settings, Loader2, CheckCircle2, XCircle, Clock, ExternalLink, 
-    Rocket, RefreshCw, AlertTriangle, Globe, Lock
+    Rocket, RefreshCw, AlertTriangle, Globe, Lock, Wand2
 } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,7 +49,48 @@ export function VercelWidget({ repoId }: { repoId: string }) {
   const [isEditingGlobal, setIsEditingGlobal] = useState(false);
   const [newGlobalToken, setNewGlobalToken] = useState("");
 
+
+
   const [saving, setSaving] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
+
+  const handleDetectProject = async () => {
+    if (!useGlobalToken && !token) {
+        toast.error("Please enter a token first to detect project");
+        return;
+    }
+
+    setIsDetecting(true);
+    try {
+        const res = await fetch("/api/vercel/detect-project", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                repoId,
+                token: useGlobalToken ? undefined : token,
+                useGlobalToken
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+            toast.error(data.error || "Failed to detect project");
+            return;
+        }
+
+        if (data.found && data.projectId) {
+            setProjectId(data.projectId);
+            toast.success(`Found project: ${data.projectName}`);
+        } else {
+            toast.warning("No matching project found for this repository");
+        }
+    } catch (error) {
+        toast.error("Error during detection");
+    } finally {
+        setIsDetecting(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -251,11 +292,22 @@ export function VercelWidget({ repoId }: { repoId: string }) {
                                 <>
                                     <div className="space-y-2">
                                         <Label>Vercel Project ID</Label>
-                                        <Input 
-                                            placeholder="prj_..." 
-                                            value={projectId} 
-                                            onChange={(e) => setProjectId(e.target.value)} 
-                                        />
+                                        <div className="flex gap-2">
+                                            <Input 
+                                                placeholder="prj_..." 
+                                                value={projectId} 
+                                                onChange={(e) => setProjectId(e.target.value)} 
+                                            />
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={handleDetectProject}
+                                                disabled={isDetecting || (!useGlobalToken && !token)}
+                                                title="Auto-detect Project ID"
+                                            >
+                                                {isDetecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                                            </Button>
+                                        </div>
                                         <p className="text-xs text-muted-foreground">
                                             Found in Vercel Project Settings {'>'} General {'>'} Project ID
                                         </p>
