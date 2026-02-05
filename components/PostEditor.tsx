@@ -2,10 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+
 import { Link } from "next-view-transitions";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import Modal from "./Modal";
 import { SocialLinksEditor } from "./SocialLinksEditor";
 import { VersionHistory } from "./VersionHistory";
@@ -531,6 +534,43 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
   const [showDiffModal, setShowDiffModal] = useState(false);
   const [diffOriginal, setDiffOriginal] = useState("");
   const [diffCurrent, setDiffCurrent] = useState("");
+
+
+
+  // Blame State
+  const [showBlame, setShowBlame] = useState(false);
+  const [blameRanges, setBlameRanges] = useState<any[]>([]);
+  const [loadingBlame, setLoadingBlame] = useState(false);
+
+  // Sync State
+  const [isSynced, setIsSynced] = useState(post.status === "synced");
+  const [isCheckingSync, setIsCheckingSync] = useState(false);
+
+  useEffect(() => {
+    // Poll for sync status if not new
+    if (isNew || !post.repoId || !post.filePath || !currentSha) return;
+
+    const checkSync = async () => {
+        setIsCheckingSync(true);
+        try {
+            const [owner, repo] = post.repoId.split('/');
+            const res = await fetch(`/api/repo/check-sync?owner=${owner}&repo=${repo}&path=${encodeURIComponent(post.filePath)}&sha=${currentSha}`);
+            if (res.ok) {
+                const data = await res.json();
+                setIsSynced(data.synced);
+            }
+        } catch (e) {
+            console.error("Sync check failed", e);
+        } finally {
+            setIsCheckingSync(false);
+        }
+    };
+
+    const interval = setInterval(checkSync, 30000); // Check every 30s
+    checkSync(); // Initial check
+
+    return () => clearInterval(interval);
+  }, [post.repoId, post.filePath, currentSha, isNew]);
 
   const [suggestedFields, setSuggestedFields] = useState<Record<string, { type: string; nestedFields?: Record<string, any> }>>({});
 
@@ -1260,6 +1300,24 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
     return null;
   };
 
+  const loadBlame = async () => {
+      setLoadingBlame(true);
+      try {
+          const [owner, repo] = post.repoId.split('/');
+          const res = await fetch(`/api/repo/blame?owner=${owner}&repo=${repo}&path=${encodeURIComponent(post.filePath)}`);
+          if (res.ok) {
+              const data = await res.json();
+              setBlameRanges(data.ranges);
+          } else {
+              toast.error("Error cargando Blame");
+          }
+      } catch (e) {
+          toast.error("Error conectando para Blame");
+      } finally {
+          setLoadingBlame(false);
+      }
+  };
+
   const handleShowDiff = () => {
     // Construct original (Initial Load)
     // Note: post.metadata is the initial metadata passed via props.
@@ -1338,6 +1396,20 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             )}
 
             {!isNew && (
+                <button
+                    onClick={() => {
+                        setShowBlame(true);
+                        if (blameRanges.length === 0) loadBlame();
+                    }}
+                    className="px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors flex items-center gap-2"
+                    title="Git Blame"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    <span className="hidden sm:inline text-xs font-medium">Blame</span>
+                </button>
+            )}
+
+            {!isNew && (
               <button
                 onClick={() => setShowHistory(true)}
                 className="px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
@@ -1395,15 +1467,22 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                 </p>
               )}
             </div>
-            <span
-              className={`px-3 py-1 rounded text-xs font-medium ${
-                post.status === "synced"
-                  ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20"
-                  : "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20"
-              }`}
-            >
-              {post.status}
-            </span>
+            <div className="flex items-center gap-2">
+                {isCheckingSync && (
+                    <div className="animate-spin w-3 h-3 border-2 border-primary border-t-transparent rounded-full" title="Comprobando sincronización..." />
+                )}
+                <span
+                className={`px-3 py-1 rounded text-xs font-medium flex items-center gap-1.5 ${
+                    isSynced
+                    ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20"
+                    : "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20"
+                }`}
+                title={isSynced ? "Sincronizado con GitHub" : "Cambios locales no subidos o desactualizado"}
+                >
+                <span className={`w-1.5 h-1.5 rounded-full ${isSynced ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                {isSynced ? "Sincronizado" : "No Sincronizado"}
+                </span>
+            </div>
           </div>
         </div>
 
@@ -2178,6 +2257,87 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
         }
       >
         <DiffViewer oldValue={diffOriginal} newValue={diffCurrent} />
+      </Modal>
+
+      {/* Blame Modal */}
+      <Modal
+        isOpen={showBlame}
+        onClose={() => setShowBlame(false)}
+        title="Git Blame - Autores por Línea"
+        description="Explora quién editó cada parte del archivo y cuándo."
+        className="max-w-5xl"
+        footer={
+           <button
+             onClick={() => setShowBlame(false)}
+             className="px-4 py-2 text-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded font-medium"
+           >
+             Cerrar
+           </button>
+        }
+      >
+        <div className="bg-card border border-border rounded-md overflow-hidden max-h-[70vh] flex flex-col">
+            {loadingBlame ? (
+                <div className="p-12 flex flex-col items-center justify-center gap-4">
+                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+                    <p className="text-muted-foreground">Analizando historial del archivo...</p>
+                </div>
+            ) : (
+                <div className="overflow-auto custom-scrollbar flex-1">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-muted/50 sticky top-0 z-10">
+                            <tr>
+                                <th className="p-2 text-xs font-medium text-muted-foreground border-b border-border w-48">Autor & Fecha</th>
+                                <th className="p-2 text-xs font-medium text-muted-foreground border-b border-border">Línea</th>
+                                <th className="p-2 text-xs font-medium text-muted-foreground border-b border-border w-full">Contenido</th>
+                            </tr>
+                        </thead>
+                        <tbody className="font-mono text-xs">
+                          {/* We need to render the content lines and match them with blame ranges */}
+                          {(content || "").split('\n').map((line, idx) => {
+                              const lineNum = idx + 1;
+                              // Find range for this line
+                              const range = blameRanges.find(r => lineNum >= r.startingLine && lineNum <= r.endingLine);
+                              
+                              // Check if it's the start of a range to show info, otherwise empty to cleaner look?
+                              // Or show for every line but grouped visually?
+                              // Let's grouping visually by borders.
+                              const isStartOfRange = range && range.startingLine === lineNum;
+                              const isEndOfRange = range && range.endingLine === lineNum;
+
+                              return (
+                                  <tr key={idx} className="hover:bg-muted/30 group">
+                                      <td className={`p-2 border-r border-border align-top ${isEndOfRange ? 'border-b border-border/50' : ''}`}>
+                                          {isStartOfRange && range && (
+                                              <div className="flex flex-col gap-0.5">
+                                                  <div className="flex items-center gap-2">
+                                                      {range.commit.author.avatarUrl && (
+                                                          <img src={range.commit.author.avatarUrl} alt="" className="w-4 h-4 rounded-full" />
+                                                      )}
+                                                      <span className="font-semibold text-foreground">{range.commit.author.name}</span>
+                                                  </div>
+                                                  <span className="text-[10px] text-muted-foreground">
+                                                      {range.commit.author.date && formatDistanceToNow(new Date(range.commit.author.date), { addSuffix: true, locale: es })}
+                                                  </span>
+                                                  <span className="text-[10px] text-primary/70 truncate max-w-[150px]" title={range.commit.message}>
+                                                      {range.commit.message}
+                                                  </span>
+                                              </div>
+                                          )}
+                                      </td>
+                                      <td className={`p-2 text-right text-muted-foreground select-none border-r border-border w-12 bg-muted/10 ${isEndOfRange ? 'border-b border-border/50' : ''}`}>
+                                          {lineNum}
+                                      </td>
+                                      <td className={`p-2 whitespace-pre-wrap break-all ${isEndOfRange ? 'border-b border-border/50' : ''}`}>
+                                          {line}
+                                      </td>
+                                  </tr>
+                              );
+                          })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
       </Modal>
     </>
   );
