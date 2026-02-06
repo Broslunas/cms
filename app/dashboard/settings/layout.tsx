@@ -21,6 +21,10 @@ const sidebarNavItems = [
     href: "/dashboard/settings/appearance",
   },
   {
+    title: "Storage",
+    href: "/dashboard/settings/storage",
+  },
+  {
     title: "Notifications",
     href: "/dashboard/settings/notifications",
   },

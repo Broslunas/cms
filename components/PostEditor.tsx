@@ -544,6 +544,11 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
 
   // Sync State
   const [isSynced, setIsSynced] = useState(post.status === "synced");
+
+  // Upload State
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTarget, setUploadTarget] = useState<{ type: 'content' | 'metadata', key?: string }>({ type: 'content' });
   const [isCheckingSync, setIsCheckingSync] = useState(false);
 
   useEffect(() => {
@@ -607,6 +612,47 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
   const [showTemplateModal, setShowTemplateModal] = useState(isNew && templatePosts.length > 0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch(`/api/upload?repoId=${encodeURIComponent(post.repoId)}`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (uploadTarget.type === 'metadata' && uploadTarget.key) {
+          updateMetadata(uploadTarget.key, data.url);
+          toast.success("Imagen subida y actualizada");
+        } else {
+          insertText(`![${file.name}](${data.url})`, "");
+          toast.success("Imagen subida e insertada");
+        }
+      } else {
+        const err = await response.json();
+        toast.error(err.error || "Error al subir");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Error de conexión al subir");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const triggerUpload = (target: { type: 'content' | 'metadata', key?: string }) => {
+    setUploadTarget(target);
+    fileInputRef.current?.click();
+  };
 
   // --- Handlers for Metadata Tools ---
   const handleAddField = () => {
@@ -1179,12 +1225,29 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             </button>
           </div>
           <div className="space-y-3">
-            <input
-              type="text"
-              value={value}
-              onChange={(e) => updateMetadata(key, e.target.value)}
-              className="w-full px-3 py-2 bg-background border border-input rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={value}
+                onChange={(e) => updateMetadata(key, e.target.value)}
+                className="flex-1 px-3 py-2 bg-background border border-input rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => triggerUpload({ type: 'metadata', key })}
+                className="px-3 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors flex items-center gap-2 border border-border"
+                title="Subir imagen"
+              >
+                {isUploading && uploadTarget.key === key ? (
+                  <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                )}
+                <span className="hidden sm:inline">Subir</span>
+              </button>
+            </div>
             {isImage && trimmedValue.length > 0 && (
               <div className="relative group w-fit">
                 <div className="rounded-lg overflow-hidden border border-border bg-muted/50 max-w-xs">
@@ -1355,7 +1418,14 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
   );
 
   return (
-<>
+    <>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleUpload}
+        className="hidden"
+        accept="image/*,video/*,audio/*,.pdf,.zip"
+      />
       {/* Header */}
       <header className="border-b border-border bg-background sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -1648,12 +1718,25 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                     }
                   />
                   <ToolbarButton 
-                    label="Imagen" 
+                    label="Link de Imagen" 
                     onClick={() => insertText("![Alt text](", ")")}
                     icon={
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                       </svg>
+                    }
+                  />
+                  <ToolbarButton 
+                    label="Subir Imagen"
+                    onClick={() => triggerUpload({ type: 'content' })}
+                    icon={
+                      isUploading && uploadTarget.type === 'content' ? (
+                        <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      )
                     }
                   />
                 </div>

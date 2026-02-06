@@ -28,7 +28,12 @@ export async function GET(req: Request) {
     // For this API, returning it is fine as it is an authenticated route for the user.
     return NextResponse.json({
         vercelGlobalToken: settings.vercelGlobalToken || null,
-        // Add other global settings here
+        s3Endpoint: settings.s3Endpoint || null,
+        s3Region: settings.s3Region || null,
+        s3AccessKey: settings.s3AccessKey || null,
+        s3SecretKey: settings.s3SecretKey || null,
+        s3Bucket: settings.s3Bucket || null,
+        s3PublicUrl: settings.s3PublicUrl || null,
     });
 
   } catch (error) {
@@ -44,16 +49,28 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { vercelGlobalToken } = await req.json();
+    const { 
+        vercelGlobalToken,
+        s3Endpoint,
+        s3Region,
+        s3AccessKey,
+        s3SecretKey,
+        s3Bucket,
+        s3PublicUrl
+    } = await req.json();
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const userCollection = db.collection(getUserCollectionName(session.user.id));
 
     const update: any = {};
-    if (vercelGlobalToken !== undefined) {
-        update.vercelGlobalToken = vercelGlobalToken;
-    }
+    if (vercelGlobalToken !== undefined) update.vercelGlobalToken = vercelGlobalToken;
+    if (s3Endpoint !== undefined) update.s3Endpoint = s3Endpoint;
+    if (s3Region !== undefined) update.s3Region = s3Region;
+    if (s3AccessKey !== undefined) update.s3AccessKey = s3AccessKey;
+    if (s3SecretKey !== undefined) update.s3SecretKey = s3SecretKey;
+    if (s3Bucket !== undefined) update.s3Bucket = s3Bucket;
+    if (s3PublicUrl !== undefined) update.s3PublicUrl = s3PublicUrl;
 
     await userCollection.updateOne(
         { type: "settings" },

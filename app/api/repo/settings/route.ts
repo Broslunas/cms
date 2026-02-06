@@ -50,8 +50,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ 
         uniqueId: project._id,
         vercelConfig: project.vercelConfig || {},
-        collaborators: project.collaborators || [], // Add this
-        isShared // Frontend can use this to disable editing
+        s3Config: project.s3Config || {},
+        collaborators: project.collaborators || [], 
+        isShared 
     });
 
   } catch (error) {
@@ -68,7 +69,20 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { repoId, vercelProjectId, vercelToken, useGlobalToken } = await req.json();
+    const { 
+        repoId, 
+        vercelProjectId, 
+        vercelToken, 
+        useGlobalToken,
+        s3Endpoint,
+        s3Region,
+        s3AccessKey,
+        s3SecretKey,
+        s3Bucket,
+        s3PublicUrl,
+        useGlobalS3,
+        useGlobalCredentials
+    } = await req.json();
 
     if (!repoId) {
       return NextResponse.json({ error: "Missing repoId" }, { status: 400 });
@@ -96,6 +110,15 @@ export async function PATCH(req: Request) {
     if (vercelProjectId !== undefined) finalUpdate["vercelConfig.projectId"] = vercelProjectId;
     if (vercelToken !== undefined) finalUpdate["vercelConfig.token"] = vercelToken;
     if (useGlobalToken !== undefined) finalUpdate["vercelConfig.useGlobalToken"] = useGlobalToken;
+
+    if (s3Endpoint !== undefined) finalUpdate["s3Config.endpoint"] = s3Endpoint;
+    if (s3Region !== undefined) finalUpdate["s3Config.region"] = s3Region;
+    if (s3AccessKey !== undefined) finalUpdate["s3Config.accessKey"] = s3AccessKey;
+    if (s3SecretKey !== undefined) finalUpdate["s3Config.secretKey"] = s3SecretKey;
+    if (s3Bucket !== undefined) finalUpdate["s3Config.bucket"] = s3Bucket;
+    if (s3PublicUrl !== undefined) finalUpdate["s3Config.publicUrl"] = s3PublicUrl;
+    if (useGlobalS3 !== undefined) finalUpdate["s3Config.useGlobalS3"] = useGlobalS3;
+    if (useGlobalCredentials !== undefined) finalUpdate["s3Config.useGlobalCredentials"] = useGlobalCredentials;
 
 
     const result = await userCollection.updateOne(
