@@ -545,11 +545,14 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
   // Sync State
   const [isSynced, setIsSynced] = useState(post.status === "synced");
 
-  // Upload State
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<{ type: 'content' | 'metadata', key?: string }>({ type: 'content' });
   const [isCheckingSync, setIsCheckingSync] = useState(false);
+  const [uploadFolder, setUploadFolder] = useState("images");
+  const [uploadFilename, setUploadFilename] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     // Poll for sync status if not new
@@ -616,13 +619,24 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPendingFile(file);
+    // Set initial custom filename without extension for easier editing
+    const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.'));
+    setUploadFilename(nameWithoutExt || file.name);
+    setShowUploadModal(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const confirmUpload = async () => {
+    if (!pendingFile) return;
 
     setIsUploading(true);
+    setShowUploadModal(false);
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", pendingFile);
 
     try {
-      const response = await fetch(`/api/upload?repoId=${encodeURIComponent(post.repoId)}`, {
+      const response = await fetch(`/api/upload?repoId=${encodeURIComponent(post.repoId)}&folder=${encodeURIComponent(uploadFolder)}&filename=${encodeURIComponent(uploadFilename)}`, {
         method: "POST",
         body: formData,
       });
@@ -633,7 +647,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
           updateMetadata(uploadTarget.key, data.url);
           toast.success("Imagen subida y actualizada");
         } else {
-          insertText(`![${file.name}](${data.url})`, "");
+          insertText(`![${pendingFile.name}](${data.url})`, "");
           toast.success("Imagen subida e insertada");
         }
       } else {
@@ -645,7 +659,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       toast.error("Error de conexión al subir");
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setPendingFile(null);
     }
   };
 
@@ -1902,6 +1916,74 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
               <option value="array">Lista (Tags)</option>
               <option value="date">Fecha</option>
             </select>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Upload Modal */}
+      <Modal
+        isOpen={showUploadModal}
+        onClose={() => { setShowUploadModal(false); setPendingFile(null); }}
+        title="Subir Archivo"
+        description="Selecciona el directorio de destino para tu archivo en el almacenamiento."
+        footer={
+           <div className="flex justify-end gap-2">
+             <button
+               onClick={() => { setShowUploadModal(false); setPendingFile(null); }}
+               className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
+             >
+               Cancelar
+             </button>
+             <button
+               onClick={confirmUpload}
+               disabled={isUploading}
+               className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+             >
+               {isUploading && <div className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full" />}
+               {isUploading ? "Subiendo..." : "Subir ahora"}
+             </button>
+           </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-md italic text-xs text-muted-foreground">
+             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+             </svg>
+             Archivo seleccionado: {pendingFile?.name} ({pendingFile ? (pendingFile.size / 1024).toFixed(1) : 0} KB)
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Nombre del Archivo</label>
+            <div className="relative">
+                <input
+                    type="text"
+                    value={uploadFilename}
+                    onChange={(e) => setUploadFilename(e.target.value)}
+                    className="w-full bg-background border border-input rounded p-2 pl-8 text-sm text-foreground focus:border-ring outline-none"
+                    placeholder="ej: mi-imagen-bonita"
+                />
+                <svg className="w-4 h-4 absolute left-2.5 top-2.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Directorio de Destino</label>
+            <div className="relative">
+                <input
+                    type="text"
+                    value={uploadFolder}
+                    onChange={(e) => setUploadFolder(e.target.value)}
+                    className="w-full bg-background border border-input rounded p-2 pl-8 text-sm text-foreground focus:border-ring outline-none"
+                    placeholder="images, uploads, assets/blog..."
+                />
+                <svg className="w-4 h-4 absolute left-2.5 top-2.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-2">
+                El archivo se guardará en: <span className="font-mono">{uploadFolder || '(raíz)'}/{uploadFilename || 'uuid'}.{pendingFile?.name.split('.').pop()}</span>
+            </p>
           </div>
         </div>
       </Modal>

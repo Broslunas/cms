@@ -13,6 +13,8 @@ export async function POST(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const repoId = searchParams.get("repoId");
+    const folder = searchParams.get("folder") || "";
+    const customName = searchParams.get("filename") || "";
 
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -25,7 +27,22 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const fileExtension = file.name.split(".").pop();
-    const fileName = `${uuidv4()}.${fileExtension}`;
+    
+    // Determine the final filename
+    let finalFileName = customName.trim();
+    if (!finalFileName) {
+        finalFileName = `${uuidv4()}.${fileExtension}`;
+    } else {
+        // Ensure extension is present if not provided in custom name
+        if (!finalFileName.includes(".")) {
+            finalFileName = `${finalFileName}.${fileExtension}`;
+        }
+    }
+
+    // Sanitize and construct the key
+    let cleanFolder = folder.trim().replace(/^\/+|\/+$/g, "");
+    const fileName = cleanFolder ? `${cleanFolder}/${finalFileName}` : finalFileName;
+    
     const contentType = file.type;
 
     const command = new PutObjectCommand({
@@ -33,7 +50,7 @@ export async function POST(req: Request) {
       Key: fileName,
       Body: buffer,
       ContentType: contentType,
-      ACL: "public-read", // Note: Some S3 providers might not support this or require bucket-wide config
+      ACL: "public-read",
     });
 
     await s3Client.send(command);
