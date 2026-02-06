@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ViewTransitions } from 'next-view-transitions';
 import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SiteHeader } from "@/components/site-header";
 import { CookieBanner } from "@/components/cookie-banner";
@@ -108,7 +108,7 @@ export default function RootLayout({
                 <div className="flex-1 relative transition-all duration-300 ease-in-out">{children}</div>
                 <CookieBanner />
               </div>
-              <Toaster theme="system" position="bottom-right" />
+              <Toaster />
               
               {/* Google Analytics */}
               <Script
