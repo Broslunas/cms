@@ -1,8 +1,9 @@
 "use client";
 
-import { RefObject } from "react";
+import { RefObject, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { toast } from "sonner";
 
 interface ContentEditorProps {
     content: string;
@@ -28,19 +29,70 @@ export function ContentEditor({
     uploadTarget
 }: ContentEditorProps) {
 
+  const [aiProcessing, setAiProcessing] = useState(false);
+
+  const handleAiAction = async (type: string, option?: string) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selectedText = textarea.value.substring(start, end);
+
+      if (!selectedText.trim()) {
+          toast.warning("Selecciona primero el texto que quieres procesar");
+          return;
+      }
+
+      setAiProcessing(true);
+      const toastId = toast.loading("Procesando con IA...");
+
+      try {
+          const res = await fetch("/api/ai/process", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                  type,
+                  option,
+                  text: selectedText
+              })
+          });
+
+          if (!res.ok) throw new Error("Error en la petición");
+          
+          const data = await res.json();
+          if (data.result) {
+              const newText = textarea.value.substring(0, start) + data.result + textarea.value.substring(end);
+              onChange(newText);
+              toast.success("Texto actualizado", { id: toastId });
+          } else {
+              throw new Error("No se recibió resultado");
+          }
+
+      } catch (error: any) {
+          console.error(error);
+          toast.error("Error al procesar", { id: toastId });
+      } finally {
+          setAiProcessing(false);
+      }
+  };
+
   const ToolbarButton = ({  
     icon, 
     label, 
-    onClick 
+    onClick,
+    disabled = false
   }: { 
     icon: React.ReactNode, 
     label: string, 
-    onClick: () => void 
+    onClick: () => void,
+    disabled?: boolean
   }) => (
     <button
       onClick={onClick}
       title={label}
-      className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
+      disabled={disabled}
+      className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {icon}
     </button>
@@ -153,15 +205,6 @@ export function ContentEditor({
                     }
                   />
                   <ToolbarButton 
-                    label="Link de Imagen" 
-                    onClick={() => insertText("![Alt text](", ")")}
-                    icon={
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                      </svg>
-                    }
-                  />
-                  <ToolbarButton 
                     label="Subir Imagen"
                     onClick={() => triggerUpload({ type: 'content' })}
                     icon={
@@ -174,6 +217,30 @@ export function ContentEditor({
                       )
                     }
                   />
+
+                  {/* AI Tools Separator */}
+                  <div className="w-px h-4 bg-border mx-1" />
+                  
+                  {/* Grammar Check */}
+                  <ToolbarButton 
+                    label="Corregir Gramática (Selección)" 
+                    onClick={() => handleAiAction("grammar")}
+                    disabled={aiProcessing}
+                    icon={
+                        aiProcessing ? <div className="animate-spin w-3 h-3 border border-current rounded-full border-t-transparent" /> :
+                        <span className="text-xs font-bold font-serif">Aa</span>
+                    }
+                  />
+
+                  {/* Tone Tools - Dropdown like approach via buttons for simplicity or native select? Let's use button group */}
+                  <div className="flex items-center bg-muted/30 rounded px-1 ml-1" title="Reescribir tono">
+                        <button onClick={() => handleAiAction("tone", "formal")} className="p-1 text-[10px] hover:text-primary transition-colors disabled:opacity-50" disabled={aiProcessing}>Formal</button>
+                        <span className="text-border mx-1">|</span>
+                        <button onClick={() => handleAiAction("tone", "shorter")} className="p-1 text-[10px] hover:text-primary transition-colors disabled:opacity-50" disabled={aiProcessing}>Corto</button>
+                        <span className="text-border mx-1">|</span>
+                        <button onClick={() => handleAiAction("tone", "funnier")} className="p-1 text-[10px] hover:text-primary transition-colors disabled:opacity-50" disabled={aiProcessing}>Divertido</button>
+                  </div>
+
                 </div>
               )}
             </div>

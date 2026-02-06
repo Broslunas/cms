@@ -4,6 +4,7 @@ import { MetadataField } from "./MetadataField";
 
 interface MetadataEditorProps {
     metadata: any;
+    content: string; // Added to support AI generation based on content
     onUpdate: (key: string, value: any) => void;
     onDeleteField: (key: string) => void;
     onShowImportModal: () => void;
@@ -19,6 +20,7 @@ interface MetadataEditorProps {
 
 export function MetadataEditor({
     metadata,
+    content,
     onUpdate,
     onDeleteField,
     onShowImportModal,
@@ -82,6 +84,7 @@ export function MetadataEditor({
                     key={key}
                     fieldKey={key}
                     value={value}
+                    content={content} // Pass content down
                     onUpdate={onUpdate}
                     onDelete={onDeleteField}
                     triggerUpload={triggerUpload}

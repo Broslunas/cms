@@ -41,14 +41,10 @@ export async function GET(req: Request) {
         sort: "updated"
     });
     
-    const repoNames = repos.map(r => r.full_name);
-    console.log(`User ${user.login} has access to these repos (first 20):`, repoNames);
-    
+    const repoNames = repos.map(r => r.full_name);    
     // Get scopes from headers (case-insensitive)
     const headerKeys = Object.keys(authRes.headers);
     const rawScopes = authRes.headers['x-oauth-scopes'] || authRes.headers['X-OAuth-Scopes'] || "No detectados";
-    console.log(`Token Scopes for ${user.login}:`, rawScopes);
-    console.log(`Available headers:`, headerKeys);
 
     return NextResponse.json({ 
         invitations, 

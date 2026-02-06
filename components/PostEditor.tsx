@@ -15,6 +15,7 @@ import { EditorHeader } from "./post-editor/EditorHeader";
 import { MetadataEditor } from "./post-editor/MetadataEditor";
 import { ContentEditor } from "./post-editor/ContentEditor";
 
+
 interface PostMetadata {
   [key: string]: any;
 }
@@ -644,6 +645,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             if (blameRanges.length === 0) loadBlame();
         }}
         onShowHistory={() => setShowHistory(true)}
+
         onDelete={() => setShowDeleteConfirm(true)}
       />
 
@@ -707,6 +709,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             isUploading={isUploading}
             uploadTarget={uploadTarget}
             suggestedFields={suggestedFields}
+            content={content}
         />
 
         {/* Content Editor */}
@@ -796,6 +799,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             )}
         </div>
       </Modal>
+
 
       {/* Modal Definitions */}
       {/* Add Field Modal */}

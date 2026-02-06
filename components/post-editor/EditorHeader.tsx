@@ -39,6 +39,8 @@ export function EditorHeader({
           </Link>
 
           <div className="flex items-center gap-3">
+             <div className="w-px h-6 bg-border mx-1" />
+
             <button
               onClick={() => onSave(false)}
               disabled={saving || committing}
