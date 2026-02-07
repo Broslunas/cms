@@ -7,6 +7,33 @@ import { SocialLinksEditor } from "../SocialLinksEditor";
 import { useState } from "react";
 import { toast } from "sonner";
 
+// Función para convertir rutas relativas a URLs de GitHub raw
+const convertToGitHubRawUrl = (src: string, repoId?: string): string => {
+  // Si ya es una URL completa, no hacer nada
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    return src;
+  }
+  
+  // Construir la URL base dinámicamente desde repoId
+  let baseUrl = 'https://raw.githubusercontent.com/Broslunas/portfolio-old/refs/heads/main';
+  if (repoId) {
+    // repoId viene en formato "owner/repo"
+    baseUrl = `https://raw.githubusercontent.com/${repoId}/refs/heads/main`;
+  }
+  
+  // Si es una ruta relativa que empieza con /
+  if (src.startsWith('/')) {
+    return `${baseUrl}${src}`;
+  }
+  
+  // Si es una ruta relativa sin / al inicio
+  if (!src.startsWith('./') && !src.startsWith('../')) {
+    return `${baseUrl}/${src}`;
+  }
+  
+  return src;
+};
+
 interface MetadataFieldProps {
     fieldKey: string;
     value: any;
@@ -18,6 +45,7 @@ interface MetadataFieldProps {
     isUploading: boolean;
     uploadTarget: { type: 'content' | 'metadata', key?: string };
     suggestedFields: Record<string, any>;
+    repoId: string;
 }
 
 export function MetadataField({
@@ -30,7 +58,8 @@ export function MetadataField({
     triggerUpload,
     isUploading,
     uploadTarget,
-    suggestedFields
+    suggestedFields,
+    repoId
 }: MetadataFieldProps) {
     const key = fieldKey;
     const [isGenerating, setIsGenerating] = useState(false);
@@ -271,7 +300,7 @@ export function MetadataField({
               <div className="relative group w-fit">
                 <div className="rounded-lg overflow-hidden border border-border bg-muted/50 max-w-xs">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img key={trimmedValue} src={trimmedValue} alt={`Preview of ${key}`} className="max-h-48 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }} />
+                  <img key={trimmedValue} src={convertToGitHubRawUrl(trimmedValue, repoId)} alt={`Preview of ${key}`} className="max-h-48 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }} />
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none"><span className="text-xs text-white bg-black/70 px-2 py-1 rounded">Vista Previa</span></div>
                 </div>
               </div>

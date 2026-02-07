@@ -752,6 +752,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             uploadTarget={uploadTarget}
             suggestedFields={suggestedFields}
             content={content}
+            repoId={post.repoId}
         />
 
         {/* Content Editor */}
@@ -765,6 +766,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             triggerUpload={triggerUpload}
             isUploading={isUploading}
             uploadTarget={uploadTarget}
+            repoId={post.repoId}
         />
 
         {/* Danger Zone - Removed redundant content as it's just empty or duplicates actions */}

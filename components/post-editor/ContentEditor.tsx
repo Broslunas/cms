@@ -5,6 +5,41 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
+// Función para convertir rutas relativas a URLs de GitHub raw
+const convertToGitHubRawUrl = (src: string | Blob | undefined, repoId?: string): string | Blob | undefined => {
+  // Si no hay src o es un Blob, devolverlo tal cual
+  if (!src || src instanceof Blob) {
+    return src;
+  }
+  
+  // Si es una cadena de texto (string)
+  if (typeof src === 'string') {
+    // Si ya es una URL completa, no hacer nada
+    if (src.startsWith('http://') || src.startsWith('https://')) {
+      return src;
+    }
+    
+    // Construir la URL base dinámicamente desde repoId
+    let baseUrl = 'https://raw.githubusercontent.com/Broslunas/portfolio-old/refs/heads/main';
+    if (repoId) {
+      // repoId viene en formato "owner/repo"
+      baseUrl = `https://raw.githubusercontent.com/${repoId}/refs/heads/main`;
+    }
+    
+    // Si es una ruta relativa que empieza con /
+    if (src.startsWith('/')) {
+      return `${baseUrl}${src}`;
+    }
+    
+    // Si es una ruta relativa sin / al inicio
+    if (!src.startsWith('./') && !src.startsWith('../')) {
+      return `${baseUrl}/${src}`;
+    }
+  }
+  
+  return src;
+};
+
 interface ContentEditorProps {
     content: string;
     onChange: (val: string) => void;
@@ -15,6 +50,7 @@ interface ContentEditorProps {
     triggerUpload: (target: { type: 'content' }) => void;
     isUploading: boolean;
     uploadTarget: { type: 'content' | 'metadata', key?: string };
+    repoId: string;
 }
 
 export function ContentEditor({
@@ -26,7 +62,8 @@ export function ContentEditor({
     insertText,
     triggerUpload,
     isUploading,
-    uploadTarget
+    uploadTarget,
+    repoId
 }: ContentEditorProps) {
 
   const [aiProcessing, setAiProcessing] = useState(false);
@@ -263,7 +300,21 @@ export function ContentEditor({
             {activeTab === "preview" && (
               <div className="flex-1 p-8 bg-background overflow-y-auto">
                 <div className="prose dark:prose-invert max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      img: ({node, src, alt, ...props}) => {
+                        const imageSrc = convertToGitHubRawUrl(src, repoId);
+                        return (
+                          <img 
+                            src={typeof imageSrc === 'string' ? imageSrc : undefined} 
+                            alt={alt} 
+                            {...props}
+                          />
+                        );
+                      }
+                    }}
+                  >
                     {content || "*No hay contenido para previsualizar*"}
                   </ReactMarkdown>
                 </div>
@@ -281,7 +332,21 @@ export function ContentEditor({
                 />
                 <div className="h-full p-6 bg-background overflow-y-auto">
                    <div className="prose dark:prose-invert prose-sm max-w-none">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        img: ({node, src, alt, ...props}) => {
+                          const imageSrc = convertToGitHubRawUrl(src, repoId);
+                          return (
+                            <img 
+                              src={typeof imageSrc === 'string' ? imageSrc : undefined} 
+                              alt={alt} 
+                              {...props}
+                            />
+                          );
+                        }
+                      }}
+                    >
                       {content || "*Previsualización*"}
                     </ReactMarkdown>
                   </div>

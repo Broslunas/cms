@@ -16,6 +16,7 @@ interface MetadataEditorProps {
     isUploading: boolean;
     uploadTarget: { type: 'content' | 'metadata', key?: string };
     suggestedFields: Record<string, any>;
+    repoId: string;
 }
 
 export function MetadataEditor({
@@ -31,7 +32,8 @@ export function MetadataEditor({
     triggerUpload,
     isUploading,
     uploadTarget,
-    suggestedFields
+    suggestedFields,
+    repoId
 }: MetadataEditorProps) {
   return (
         <div className="bg-card rounded-lg p-6 border border-border space-y-5">
@@ -92,6 +94,7 @@ export function MetadataEditor({
                     isUploading={isUploading}
                     uploadTarget={uploadTarget}
                     suggestedFields={suggestedFields}
+                    repoId={repoId}
                 />
             ))}
           </div>
