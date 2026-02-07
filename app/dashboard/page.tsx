@@ -6,7 +6,7 @@ import ImportButton from "@/components/ImportButton";
 import DeleteRepoButton from "@/components/DeleteRepoButton";
 import ShareProjectButton from "@/components/ShareProjectButton";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, RefreshCw, FolderGit2, Users } from "lucide-react";
+import { FileText, RefreshCw, FolderGit2, Users, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ObjectId } from "mongodb";
 
@@ -96,7 +96,13 @@ export default async function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
-             <ImportButton />
+            <Link href="/dashboard/settings">
+              <Button variant="outline" className="gap-2">
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">Settings</span>
+              </Button>
+            </Link>
+            <ImportButton />
           </div>
         </div>
 
