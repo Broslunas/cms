@@ -188,7 +188,7 @@ export function SectionsEditor({
                     </div>
                  ) : (
                     <>
-                        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="space-y-3 max-h-[800px] overflow-y-auto pr-2 pb-4 custom-scrollbar">
                             {value.length === 0 && (
                                 <div className="py-12 flex flex-col items-center justify-center border border-dashed border-border rounded-lg bg-muted/20">
                                     <List className="w-8 h-8 text-muted-foreground mb-3 opacity-20" />

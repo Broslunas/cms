@@ -226,7 +226,7 @@ export function TranscriptionEditor({
                     <div className="mb-6 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-lg space-y-3">
                         <div className="flex items-center gap-2 text-indigo-500 mb-1">
                             <Music className="w-4 h-4" />
-                            <h4 className="text-sm font-semibold uppercase tracking-wider">Generate with Deepgram</h4>
+                            <h4 className="text-sm font-semibold uppercase tracking-wider">Generate with AI</h4>
                         </div>
                         <p className="text-xs text-muted-foreground">Enter the URL of an audio file (MP3, WAV, etc.) to automatically generate the full transcription.</p>
                         
@@ -270,7 +270,7 @@ export function TranscriptionEditor({
                     </div>
                 ) : (
                     <>
-                        <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="space-y-3 max-h-[800px] overflow-y-auto pr-2 pb-4 custom-scrollbar">
                         {value.length === 0 && (
                             <div className="py-12 flex flex-col items-center justify-center border border-dashed border-border rounded-lg bg-muted/20">
                                 <Type className="w-8 h-8 text-muted-foreground mb-3 opacity-20" />

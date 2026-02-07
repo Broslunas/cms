@@ -137,7 +137,7 @@ export function ContentEditor({
   );
 
   return (
-        <div className="bg-card rounded-lg shadow-sm border border-border flex flex-col min-h-[600px]">
+        <div className="bg-card rounded-lg shadow-sm border border-border flex flex-col min-h-[800px]">
           {/* Tabs & Toolbar */}
           <div className="border-b border-border bg-card">
             <div className="flex items-center justify-between px-4 py-2">
@@ -250,14 +250,14 @@ export function ContentEditor({
           </div>
 
           {/* Editor Area */}
-          <div className="flex-1 flex flex-col relative">
+          <div className="flex-1 flex flex-col relative overflow-hidden">
             {activeTab === "edit" && (
-              <div className="flex-1 flex flex-col">
+              <div className="flex-1 flex flex-col overflow-y-auto">
                 <textarea
                   ref={textareaRef}
                   value={content}
                   onChange={(e) => onChange(e.target.value)}
-                  className="w-full h-full p-4 bg-transparent resize-none focus:outline-none font-mono text-sm leading-relaxed"
+                  className="w-full min-h-[700px] flex-1 p-4 pb-12 bg-transparent resize-none focus:outline-none font-mono text-sm leading-relaxed whitespace-pre-wrap break-words overflow-y-auto"
                   placeholder="Write your content in Markdown..."
                 />
                 
@@ -271,7 +271,7 @@ export function ContentEditor({
             )}
 
             {activeTab === "preview" && (
-              <div className="flex-1 p-8 bg-background overflow-y-auto">
+              <div className="flex-1 p-8 pb-12 bg-background overflow-y-auto">
                 <div className="prose dark:prose-invert max-w-none">
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
@@ -295,15 +295,15 @@ export function ContentEditor({
             )}
 
             {activeTab === "split" && (
-              <div className="flex-1 grid grid-cols-2 divide-x divide-border">
+              <div className="flex-1 grid grid-cols-2 divide-x divide-border overflow-hidden">
                 <textarea
                   ref={textareaRef}
                   value={content}
                   onChange={(e) => onChange(e.target.value)}
-                  className="w-full h-full p-6 bg-background text-foreground placeholder-muted-foreground outline-none font-mono text-sm leading-relaxed resize-none"
+                  className="w-full min-h-[700px] p-6 pb-12 bg-background text-foreground placeholder-muted-foreground outline-none font-mono text-sm leading-relaxed resize-none whitespace-pre-wrap break-words overflow-y-auto"
                   placeholder="Write here..."
                 />
-                <div className="h-full p-6 bg-background overflow-y-auto">
+                <div className="min-h-[700px] p-6 pb-12 bg-background overflow-y-auto">
                    <div className="prose dark:prose-invert prose-sm max-w-none">
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}

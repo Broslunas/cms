@@ -703,7 +703,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       />
 
       {/* Main Editor */}
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6 bg-background min-h-screen">
+      <main className="max-w-7xl mx-auto px-6 py-8 pb-16 space-y-6 bg-background min-h-screen">
         {/* Meta Info */}
         <div className="bg-card rounded-lg p-4 border border-border">
           <div className="flex items-center justify-between">
