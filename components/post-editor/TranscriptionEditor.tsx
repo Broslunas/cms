@@ -81,12 +81,12 @@ export function TranscriptionEditor({
 
   const handleTranscribe = async () => {
     if (!audioUrl) {
-        toast.error("Por favor, introduce una URL de audio válida.");
+        toast.error("Please enter a valid audio URL.");
         return;
     }
 
     setIsTranscribing(true);
-    const toastId = toast.loading("Transcribiendo audio con Deepgram...");
+    const toastId = toast.loading("Transcribing audio with Deepgram...");
 
     try {
         const res = await fetch("/api/ai/transcribe", {
@@ -97,21 +97,21 @@ export function TranscriptionEditor({
 
         if (!res.ok) {
             const errorData = await res.json();
-            throw new Error(errorData.message || "Error al transcribir");
+            throw new Error(errorData.message || "Transcription error");
         }
 
         const data = await res.json();
         
         if (value.length > 0) {
             // Confirm overwrite if there's already content
-            if (confirm("Se reemplazará la transcripción actual. ¿Continuar?")) {
+            if (confirm("Current transcription will be replaced. Continue?")) {
                 onChange(data);
-                toast.success("Transcripción completada", { id: toastId });
+                toast.success("Transcription completed", { id: toastId });
                 setShowDeepgramPanel(false);
             }
         } else {
             onChange(data);
-            toast.success("Transcripción completada", { id: toastId });
+            toast.success("Transcription completed", { id: toastId });
             setShowDeepgramPanel(false);
         }
     } catch (error: any) {
@@ -168,7 +168,7 @@ export function TranscriptionEditor({
               return;
           }
 
-          throw new Error("No se pudo detectar formato JSON ni Texto válido ([00:00] ...)");
+          throw new Error("Could not detect valid JSON or Text format ([00:00] ...)");
       } catch (e) {
           setJsonError((e as Error).message);
       }
@@ -192,8 +192,8 @@ export function TranscriptionEditor({
                     </svg>
                  </button>
                  <div>
-                    <p className="text-sm font-medium text-foreground">Editor de Transcripción</p>
-                    <p className="text-xs text-muted-foreground">{value.length} segmentos</p>
+                    <p className="text-sm font-medium text-foreground">Transcription Editor</p>
+                    <p className="text-xs text-muted-foreground">{value.length} segments</p>
                  </div>
             </div>
             
@@ -205,14 +205,14 @@ export function TranscriptionEditor({
                             className={`text-xs px-2 py-1.5 rounded border flex items-center gap-1.5 transition-colors ${showDeepgramPanel ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted'}`}
                         >
                             <Wand2 className="w-3 h-3" />
-                            {showDeepgramPanel ? 'Cerrar Deepgram' : 'Auto-Transcribir (Deepgram)'}
+                            {showDeepgramPanel ? 'Close Deepgram' : 'Auto-Transcribe (Deepgram)'}
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); toggleJsonMode(); }}
                             className={`text-xs px-2 py-1.5 rounded border flex items-center gap-1.5 transition-colors ${isJsonMode ? 'bg-primary/10 text-primary border-primary/20' : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted'}`}
                         >
                             <Type className="w-3 h-3" />
-                            {isJsonMode ? 'Cancelar Importación' : 'Importar JSON/Texto'}
+                            {isJsonMode ? 'Cancel Import' : 'Import JSON/Text'}
                         </button>
                     </>
                  )}
@@ -226,16 +226,16 @@ export function TranscriptionEditor({
                     <div className="mb-6 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-lg space-y-3">
                         <div className="flex items-center gap-2 text-indigo-500 mb-1">
                             <Music className="w-4 h-4" />
-                            <h4 className="text-sm font-semibold uppercase tracking-wider">Generar con Deepgram</h4>
+                            <h4 className="text-sm font-semibold uppercase tracking-wider">Generate with Deepgram</h4>
                         </div>
-                        <p className="text-xs text-muted-foreground">Introduce la URL de un archivo de audio (MP3, WAV, etc.) para generar la transcripción completa automáticamente.</p>
+                        <p className="text-xs text-muted-foreground">Enter the URL of an audio file (MP3, WAV, etc.) to automatically generate the full transcription.</p>
                         
                         <div className="flex gap-2">
                             <input 
                                 type="text"
                                 value={audioUrl}
                                 onChange={(e) => setAudioUrl(e.target.value)}
-                                placeholder="https://ejemplo.com/audio.mp3"
+                                placeholder="https://example.com/audio.mp3"
                                 className="flex-1 bg-background border border-input rounded px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                             />
                             <button 
@@ -244,11 +244,11 @@ export function TranscriptionEditor({
                                 className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-colors whitespace-nowrap"
                             >
                                 {isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                                {isTranscribing ? 'Procesando...' : 'Transcribir'}
+                                {isTranscribing ? 'Processing...' : 'Transcribe'}
                             </button>
                         </div>
                         {audioUrl && !audioUrl.startsWith('http') && !audioUrl.startsWith('/') && (
-                            <p className="text-[10px] text-destructive italic">La URL debe empezar por http:// o https://</p>
+                            <p className="text-[10px] text-destructive italic">URL must start with http:// or https://</p>
                         )}
                     </div>
                 )}
@@ -259,13 +259,13 @@ export function TranscriptionEditor({
                             value={jsonText}
                             onChange={(e) => setJsonText(e.target.value)}
                             className="w-full h-64 bg-background text-foreground font-mono text-xs p-3 rounded border border-input focus:outline-none focus:border-ring resize-y"
-                            placeholder="Pega tu JSON o Texto con formato [00:00] Speaker: ... aquí..."
+                            placeholder="Paste your JSON or Text formatted [00:00] Speaker: ... here..."
                             spellCheck={false}
                         />
                         {jsonError && <p className="text-destructive text-xs">{jsonError}</p>}
                         <div className="flex justify-end gap-2">
-                            <button onClick={toggleJsonMode} className="text-xs text-muted-foreground hover:text-foreground px-3 py-1">Cancelar</button>
-                            <button onClick={handleImport} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90">Procesar e Importar</button>
+                            <button onClick={toggleJsonMode} className="text-xs text-muted-foreground hover:text-foreground px-3 py-1">Cancel</button>
+                            <button onClick={handleImport} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90">Process and Import</button>
                         </div>
                     </div>
                 ) : (
@@ -274,14 +274,14 @@ export function TranscriptionEditor({
                         {value.length === 0 && (
                             <div className="py-12 flex flex-col items-center justify-center border border-dashed border-border rounded-lg bg-muted/20">
                                 <Type className="w-8 h-8 text-muted-foreground mb-3 opacity-20" />
-                                <p className="text-sm text-muted-foreground">No hay segmentos de transcripción.</p>
-                                <p className="text-xs text-muted-foreground/60 mt-1">Añade uno manualmente o usa Deepgram.</p>
+                                <p className="text-sm text-muted-foreground">No transcription segments.</p>
+                                <p className="text-xs text-muted-foreground/60 mt-1">Add manually or use Deepgram.</p>
                             </div>
                         )}
                         {value.map((item, index) => (
                             <div key={index} className="flex gap-3 bg-card border border-border p-3 rounded-md group hover:border-input transition-colors">
                             <div className="w-24 shrink-0">
-                                <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mb-1 block">Tiempo</label>
+                                <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mb-1 block">Time</label>
                                 <div className="relative">
                                     <input
                                     type="text"
@@ -294,11 +294,11 @@ export function TranscriptionEditor({
                                 </div>
                             </div>
                             <div className="flex-1">
-                                <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mb-1 block">Texto</label>
+                                <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mb-1 block">Text</label>
                                 <textarea
                                 value={item.text || ""}
                                 onChange={(e) => handleUpdate(index, "text", e.target.value)}
-                                placeholder="Escribe la transcripción..."
+                                placeholder="Enter transcription..."
                                 rows={2}
                                 className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring resize-y min-h-[60px]"
                                 />
@@ -306,7 +306,7 @@ export function TranscriptionEditor({
                             <button
                                 onClick={() => handleRemove(index)}
                                 className="self-start mt-6 text-muted-foreground hover:text-destructive p-1 rounded hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
-                                title="Eliminar segmento"
+                                title="Delete segment"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
@@ -319,7 +319,7 @@ export function TranscriptionEditor({
                         className="mt-4 w-full py-2 border border-dashed border-border rounded-md text-xs text-muted-foreground hover:text-foreground hover:border-input hover:bg-muted/50 transition-all flex items-center justify-center gap-2"
                         >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                        Añadir Nuevo Segmento
+                        Add New Segment
                         </button>
                     </>
                 )}

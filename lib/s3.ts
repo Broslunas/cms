@@ -1,7 +1,8 @@
+
 import { S3Client } from "@aws-sdk/client-s3"
 import clientPromise, { DB_NAME, getUserCollectionName } from "./mongodb"
 
-export async function getS3Client(userId: string, repoId?: string) {
+export async function getS3Client(userId: string, repoId?: string, forceDefault: boolean = false) {
   const client = await clientPromise
   const db = client.db(DB_NAME)
   const userCollection = db.collection(getUserCollectionName(userId))
@@ -9,7 +10,7 @@ export async function getS3Client(userId: string, repoId?: string) {
   let s3Settings = null;
 
   // 1. If repoId is provided, try to get project-specific settings
-  if (repoId) {
+  if (repoId && !forceDefault) {
     // Check own projects
     let project = await userCollection.findOne({ type: "project", repoId });
     let settingsUserCollection = userCollection;
@@ -53,7 +54,7 @@ export async function getS3Client(userId: string, repoId?: string) {
   }
 
   // 2. Final fallback to current user's global settings (if not already found)
-  if (!s3Settings) {
+  if (!s3Settings && !forceDefault) {
     const globalSettings = await userCollection.findOne({ type: "settings" });
     if (globalSettings) {
       s3Settings = {

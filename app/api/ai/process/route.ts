@@ -56,9 +56,18 @@ export async function POST(req: Request) {
 
         case 'seo':
             userPrompt = `Analiza el siguiente contenido y genera metadatos SEO optimizados.
-            Genera un JSON con:
-            - "title": Título atractivo y optimizado (máx 60 caracteres).
-            - "description": Meta descripción persuasiva (máx 160 caracteres).
+            
+            Instrucciones:
+            1. Genera un título atractivo y optimizado para buscadores (máx 60 caracteres).
+            2. Genera una meta descripción persuasiva que invite al clic (máx 160 caracteres).
+            3. Responde en el mismo idioma que el contenido proporcionado (probablemente Español).
+            4. Devuelve ESTRICTAMENTE un objeto JSON.
+            
+            Formato JSON requerido:
+            {
+              "title": "Tu título aquí",
+              "description": "Tu descripción aquí"
+            }
             
             Contenido del post:
             ${context || text}`;

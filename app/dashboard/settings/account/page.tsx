@@ -1,17 +1,22 @@
-"use client"
-
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { toast } from "sonner"
+import { auth } from "@/lib/auth"
+import { redirect } from "next/navigation"
+import { ExportDataButton } from "./export-data-button"
 
-export default function SettingsAccountPage() {
-  const onExportData = () => {
-    toast.info("Preparing your data export...", {
-        description: "We will email you a download link shortly."
-    })
-  }
+export default async function SettingsAccountPage() {
+  const session = await auth();
+  
+    if (!session?.user || session.error === "RefreshAccessTokenError") {
+      redirect("/");
+    }
+  
+    // Verificar si el usuario tiene la app instalada
+    if (!session.appInstalled) {
+      redirect("/setup");
+    }
 
   return (
     <div className="space-y-6">
@@ -56,7 +61,7 @@ export default function SettingsAccountPage() {
                         Download a copy of your personal data.
                     </p>
                 </div>
-                <Button variant="outline" onClick={onExportData}>Export Data</Button>
+                <ExportDataButton />
             </div>
         </div>
 

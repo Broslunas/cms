@@ -31,7 +31,7 @@ export function PostItem({ post }: { post: any }) {
 
   const handleDuplicate = async () => {
     setIsDuplicating(true);
-    const toastId = toast.loading("Duplicando...");
+    const toastId = toast.loading("Duplicating...");
     try {
         const res = await fetch("/api/posts/duplicate", {
             method: "POST",
@@ -40,14 +40,14 @@ export function PostItem({ post }: { post: any }) {
         });
         
         if (res.ok) {
-            toast.success("Duplicado correctamente", { id: toastId });
+            toast.success("Duplicated successfully", { id: toastId });
             router.refresh();
         } else {
             const err = await res.json();
-            toast.error(err.error || "Error al duplicar", { id: toastId });
+            toast.error(err.error || "Error duplicating", { id: toastId });
         }
     } catch (e) {
-        toast.error("Error de conexión", { id: toastId });
+        toast.error("Connection error", { id: toastId });
     } finally {
         setIsDuplicating(false);
     }
@@ -63,7 +63,7 @@ export function PostItem({ post }: { post: any }) {
       const newPath = [...parts, newName].join('/');
       
       setIsRenaming(true);
-      const toastId = toast.loading("Renombrando...");
+      const toastId = toast.loading("Renaming...");
       
       try {
           const res = await fetch("/api/posts/rename", {
@@ -77,15 +77,15 @@ export function PostItem({ post }: { post: any }) {
           });
           
           if (res.ok) {
-              toast.success("Renombrado correctamente", { id: toastId });
+              toast.success("Renamed successfully", { id: toastId });
               setShowRenameModal(false);
               router.refresh();
           } else {
               const err = await res.json();
-              toast.error(err.error || "Error al renombrar", { id: toastId });
+              toast.error(err.error || "Error renaming", { id: toastId });
           }
       } catch (e) {
-          toast.error("Error de conexión", { id: toastId });
+          toast.error("Connection error", { id: toastId });
       } finally {
           setIsRenaming(false);
       }
@@ -93,7 +93,7 @@ export function PostItem({ post }: { post: any }) {
   
   const handleDelete = async () => {
       setIsDeleting(true);
-      const toastId = toast.loading("Eliminando...");
+      const toastId = toast.loading("Deleting...");
       
       try {
           const res = await fetch("/api/posts/delete", {
@@ -110,15 +110,15 @@ export function PostItem({ post }: { post: any }) {
           });
           
           if (res.ok) {
-              toast.success("Eliminado correctamente", { id: toastId });
+              toast.success("Deleted successfully", { id: toastId });
               setShowDeleteModal(false);
               router.refresh();
           } else {
               const err = await res.json();
-              toast.error(err.error || "Error al eliminar", { id: toastId });
+              toast.error(err.error || "Error deleting", { id: toastId });
           }
       } catch (e) {
-         toast.error("Error de conexión", { id: toastId });
+         toast.error("Connection error", { id: toastId });
       } finally {
           setIsDeleting(false);
       }
@@ -144,7 +144,7 @@ export function PostItem({ post }: { post: any }) {
                             {post.metadata.title || 
                             (Object.keys(post.metadata).length > 0 
                                 ? String(Object.values(post.metadata)[0]) 
-                                : "Sin título")}
+                                : "Untitled")}
                         </h3>
                         <p className="text-sm text-muted-foreground mt-1 font-mono line-clamp-1">
                             {post.filePath}
@@ -163,7 +163,7 @@ export function PostItem({ post }: { post: any }) {
                             ))}
                             {post.metadata.tags.length > 5 && (
                             <span className="px-2 py-1 text-muted-foreground text-xs">
-                                +{post.metadata.tags.length - 5} más
+                                +{post.metadata.tags.length - 5} more
                             </span>
                             )}
                         </div>
@@ -179,9 +179,9 @@ export function PostItem({ post }: { post: any }) {
                             ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:text-yellow-400"
                             : "bg-zinc-500/10 text-zinc-600 border-zinc-500/20 dark:text-zinc-400"
                         }`}>
-                            {post.status === "synced" && "Sincronizado"}
-                            {post.status === "modified" && "Modificado"}
-                            {post.status === "draft" && "Borrador"}
+                            {post.status === "synced" && "Synced"}
+                            {post.status === "modified" && "Modified"}
+                            {post.status === "draft" && "Draft"}
                         </div>
                         <span className="text-xs text-muted-foreground">
                             {new Date(post.updatedAt).toLocaleDateString()}
@@ -194,17 +194,17 @@ export function PostItem({ post }: { post: any }) {
       <ContextMenuContent className="w-64">
         <ContextMenuItem onClick={() => setShowRenameModal(true)}>
              <FileEdit className="mr-2 h-4 w-4" />
-             Renombrar
+             Rename
              <ContextMenuShortcut>F2</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuItem onClick={handleDuplicate} disabled={isDuplicating}>
              <Copy className="mr-2 h-4 w-4" />
-             Duplicar
+             Duplicate
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onClick={() => setShowDeleteModal(true)} className="text-red-500 focus:text-red-500 focus:bg-red-100 dark:focus:bg-red-900/20">
              <Trash2 className="mr-2 h-4 w-4" />
-             Eliminar
+             Delete
              <ContextMenuShortcut>⌫</ContextMenuShortcut>
         </ContextMenuItem>
       </ContextMenuContent>
@@ -214,20 +214,20 @@ export function PostItem({ post }: { post: any }) {
     <Modal
         isOpen={showRenameModal}
         onClose={() => setShowRenameModal(false)}
-        title="Renombrar Archivo"
-        description={`Cambia el nombre del archivo. La ruta carpeta se mantendrá (${post.filePath.split('/').slice(0,-1).join('/')}).`}
+        title="Rename File"
+        description={`Change the name of the file. The folder path will be maintained (${post.filePath.split('/').slice(0,-1).join('/')}).`}
         footer={
             <div className="flex justify-end gap-3 w-full">
-                <Button variant="ghost" onClick={() => setShowRenameModal(false)}>Cancelar</Button>
+                <Button variant="ghost" onClick={() => setShowRenameModal(false)}>Cancel</Button>
                 <Button onClick={handleRename} disabled={isRenaming}>
-                    {isRenaming ? "Renombrando..." : "Renombrar"}
+                    {isRenaming ? "Renaming..." : "Rename"}
                 </Button>
             </div>
         }
     >
         <div className="space-y-4">
             <div>
-                <label className="text-sm font-medium mb-1 block">Nombre del archivo</label>
+                <label className="text-sm font-medium mb-1 block">File Name</label>
                 <input 
                     type="text" 
                     value={newName} 
@@ -244,7 +244,7 @@ export function PostItem({ post }: { post: any }) {
                         onChange={(e) => setRenameOnGitHub(e.target.checked)}
                         className="rounded border-input"
                     />
-                    <label htmlFor="renameGit" className="text-sm text-muted-foreground">Renombrar también en GitHub (Puede ser lento)</label>
+                    <label htmlFor="renameGit" className="text-sm text-muted-foreground">Also rename on GitHub (May be slow)</label>
                 </div>
             )}
         </div>
@@ -254,20 +254,20 @@ export function PostItem({ post }: { post: any }) {
     <Modal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        title="Eliminar Post"
-        description="Esta acción eliminará el post de tu CMS. ¿Estás seguro?"
+        title="Delete Post"
+        description="This action will delete the post from your CMS. Are you sure?"
         footer={
             <div className="flex justify-end gap-3 w-full">
-                <Button variant="ghost" onClick={() => setShowDeleteModal(false)}>Cancelar</Button>
+                <Button variant="ghost" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
                 <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-                    {isDeleting ? "Eliminando..." : "Eliminar"}
+                    {isDeleting ? "Deleting..." : "Delete"}
                 </Button>
             </div>
         }
     >
         <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
-                El archivo <strong>{post.filePath}</strong> será eliminado de la base de datos.
+                The file <strong>{post.filePath}</strong> will be deleted from the database.
             </p>
             {/* Note: In quick delete, we assume DB only unless we implement a checkbox for GitHub delete here too. Keeping it simple as per user request for "Quick Actions" */}
         </div>

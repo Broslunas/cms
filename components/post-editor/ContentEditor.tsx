@@ -4,6 +4,7 @@ import { RefObject, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
+import { Bold, Italic, Heading1, List, Quote, Code, Link as LinkIcon, Image as ImageIcon, Wand2, Sparkles } from "lucide-react";
 
 // Función para convertir rutas relativas a URLs de GitHub raw
 const convertToGitHubRawUrl = (src: string | Blob | undefined, repoId?: string): string | Blob | undefined => {
@@ -77,12 +78,12 @@ export function ContentEditor({
       const selectedText = textarea.value.substring(start, end);
 
       if (!selectedText.trim()) {
-          toast.warning("Selecciona primero el texto que quieres procesar");
+          toast.warning("Select the text you want to process first");
           return;
       }
 
       setAiProcessing(true);
-      const toastId = toast.loading("Procesando con IA...");
+      const toastId = toast.loading("Processing with AI...");
 
       try {
           const res = await fetch("/api/ai/process", {
@@ -95,20 +96,20 @@ export function ContentEditor({
               })
           });
 
-          if (!res.ok) throw new Error("Error en la petición");
+          if (!res.ok) throw new Error("Error in request");
           
           const data = await res.json();
           if (data.result) {
               const newText = textarea.value.substring(0, start) + data.result + textarea.value.substring(end);
               onChange(newText);
-              toast.success("Texto actualizado", { id: toastId });
+              toast.success("Text updated", { id: toastId });
           } else {
-              throw new Error("No se recibió resultado");
+              throw new Error("No result received");
           }
 
       } catch (error: any) {
           console.error(error);
-          toast.error("Error al procesar", { id: toastId });
+          toast.error("Error processing", { id: toastId });
       } finally {
           setAiProcessing(false);
       }
@@ -162,122 +163,87 @@ export function ContentEditor({
                 >
                   Preview
                 </button>
-                <button
-                  onClick={() => onTabChange("split")}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                    activeTab === "split"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                  }`}
-                >
-                  Split
-                </button>
+                <div className="hidden md:block">
+                  <button
+                    onClick={() => onTabChange("split")}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                      activeTab === "split"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                    }`}
+                  >
+                    Split
+                  </button>
+                </div>
               </div>
 
               {/* Formatting Toolbar */}
               {(activeTab === "edit" || activeTab === "split") && (
-                <div className="flex items-center gap-1 border-l border-border pl-4 ml-4">
-                   <ToolbarButton 
-                    label="Negrita (Ctrl+B)" 
-                    onClick={() => insertText("**", "**")}
-                    icon={<span className="font-bold">B</span>}
-                  />
-                  <ToolbarButton 
-                    label="Cursiva (Ctrl+I)" 
-                    onClick={() => insertText("*", "*")}
-                    icon={<span className="italic">I</span>}
-                  />
-                  <div className="w-px h-4 bg-border mx-1" />
-                  <ToolbarButton 
-                    label="Título 1" 
-                    onClick={() => insertText("# ", "")}
-                    icon={<span className="font-bold text-sm">H1</span>}
-                  />
-                  <ToolbarButton 
-                    label="Título 2" 
-                    onClick={() => insertText("## ", "")}
-                    icon={<span className="font-bold text-sm">H2</span>}
-                  />
-                  <ToolbarButton 
-                    label="Título 3" 
-                    onClick={() => insertText("### ", "")}
-                    icon={<span className="font-bold text-sm">H3</span>}
-                  />
-                  <div className="w-px h-4 bg-border mx-1" />
-                  <ToolbarButton 
-                    label="Lista" 
-                    onClick={() => insertText("- ", "")}
-                    icon={
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                      </svg>
-                    }
-                  />
-                  <ToolbarButton 
-                    label="Cita" 
-                    onClick={() => insertText("> ", "")}
-                    icon={
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                      </svg>
-                    }
-                  />
-                  <ToolbarButton 
-                    label="Código" 
-                    onClick={() => insertText("```\n", "\n```")}
-                    icon={
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                      </svg>
-                    }
-                  />
-                  <div className="w-px h-4 bg-border mx-1" />
-                  <ToolbarButton 
-                    label="Link" 
-                    onClick={() => insertText("[", "](url)")}
-                    icon={
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                      </svg>
-                    }
-                  />
-                  <ToolbarButton 
-                    label="Subir Imagen"
-                    onClick={() => triggerUpload({ type: 'content' })}
-                    icon={
-                      isUploading && uploadTarget.type === 'content' ? (
-                        <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      )
-                    }
-                  />
-
-                  {/* AI Tools Separator */}
-                  <div className="w-px h-4 bg-border mx-1" />
-                  
-                  {/* Grammar Check */}
-                  <ToolbarButton 
-                    label="Corregir Gramática (Selección)" 
-                    onClick={() => handleAiAction("grammar")}
-                    disabled={aiProcessing}
-                    icon={
-                        aiProcessing ? <div className="animate-spin w-3 h-3 border border-current rounded-full border-t-transparent" /> :
-                        <span className="text-xs font-bold font-serif">Aa</span>
-                    }
-                  />
-
-                  {/* Tone Tools - Dropdown like approach via buttons for simplicity or native select? Let's use button group */}
-                  <div className="flex items-center bg-muted/30 rounded px-1 ml-1" title="Reescribir tono">
-                        <button onClick={() => handleAiAction("tone", "formal")} className="p-1 text-[10px] hover:text-primary transition-colors disabled:opacity-50" disabled={aiProcessing}>Formal</button>
-                        <span className="text-border mx-1">|</span>
-                        <button onClick={() => handleAiAction("tone", "shorter")} className="p-1 text-[10px] hover:text-primary transition-colors disabled:opacity-50" disabled={aiProcessing}>Corto</button>
-                        <span className="text-border mx-1">|</span>
-                        <button onClick={() => handleAiAction("tone", "funnier")} className="p-1 text-[10px] hover:text-primary transition-colors disabled:opacity-50" disabled={aiProcessing}>Divertido</button>
+                <div className="flex items-center">
+                  {/* Formatting Tools */}
+                  <div className="flex items-center gap-1 border-l border-border pl-2 ml-2">
+                    <ToolbarButton 
+                      label="Bold (Ctrl+B)" 
+                      icon={<Bold className="w-4 h-4" />} 
+                      onClick={() => insertText("**bold** ")} 
+                    />
+                    <ToolbarButton 
+                      label="Italic (Ctrl+I)" 
+                      icon={<Italic className="w-4 h-4" />} 
+                      onClick={() => insertText("_italic_ ")} 
+                    />
+                    <ToolbarButton 
+                      label="H1" 
+                      icon={<Heading1 className="w-4 h-4" />} 
+                      onClick={() => insertText("\n# Title\n")} 
+                    />
+                    <ToolbarButton 
+                      label="List" 
+                      icon={<List className="w-4 h-4" />} 
+                      onClick={() => insertText("\n- Item\n")} 
+                    />
+                    <ToolbarButton 
+                      label="Quote" 
+                      icon={<Quote className="w-4 h-4" />} 
+                      onClick={() => insertText("\n> Quote\n")} 
+                    />
+                    <ToolbarButton 
+                      label="Code Block" 
+                      icon={<Code className="w-4 h-4" />} 
+                      onClick={() => insertText("\n```\ncode\n```\n")} 
+                    />
+                    <ToolbarButton 
+                      label="Link" 
+                      icon={<LinkIcon className="w-4 h-4" />} 
+                      onClick={() => insertText("[Link Text](url)")} 
+                    />
+                    <ToolbarButton 
+                      label="Upload Image" 
+                      icon={isUploading && uploadTarget.type === 'content' ? <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" /> : <ImageIcon className="w-4 h-4" />} 
+                      onClick={() => triggerUpload({ type: 'content' })}
+                      disabled={isUploading}
+                    />
                   </div>
 
+                  {/* AI Tools */}
+                  <div className="flex items-center gap-1 border-l border-border pl-2 ml-2">
+                      <ToolbarButton 
+                        label="Fix Grammar" 
+                        icon={<Wand2 className="w-4 h-4 text-indigo-500" />} 
+                        onClick={() => handleAiAction("grammar")} 
+                        disabled={aiProcessing}
+                      />
+                      <div className="dropdown dropdown-end group relative">
+                            <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors" title="AI Tone" disabled={aiProcessing}>
+                                 <Sparkles className="w-4 h-4 text-amber-500" />
+                            </button>
+                            <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg p-1 hidden group-hover:block z-20 w-32">
+                                 <button onClick={() => handleAiAction("tone", "formal")} className="w-full text-left px-2 py-1 text-xs hover:bg-accent rounded">Formal</button>
+                                 <button onClick={() => handleAiAction("tone", "shorter")} className="w-full text-left px-2 py-1 text-xs hover:bg-accent rounded">Short</button>
+                                 <button onClick={() => handleAiAction("tone", "funnier")} className="w-full text-left px-2 py-1 text-xs hover:bg-accent rounded">Fun</button>
+                            </div>
+                      </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -291,9 +257,16 @@ export function ContentEditor({
                   ref={textareaRef}
                   value={content}
                   onChange={(e) => onChange(e.target.value)}
-                  className="flex-1 w-full p-8 bg-background text-foreground placeholder-muted-foreground outline-none font-mono text-sm leading-relaxed resize-none"
-                  placeholder="Empieza a escribir..."
+                  className="w-full h-full p-4 bg-transparent resize-none focus:outline-none font-mono text-sm leading-relaxed"
+                  placeholder="Write your content in Markdown..."
                 />
+                
+                {/* Drag Overlay */}
+                <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                    <p className="text-primary font-medium bg-background/80 px-3 py-1 rounded shadow-sm">
+                        Drag and drop an image here
+                    </p>
+                </div>
               </div>
             )}
 
@@ -315,7 +288,7 @@ export function ContentEditor({
                       }
                     }}
                   >
-                    {content || "*No hay contenido para previsualizar*"}
+                    {content || "*No content to preview*"}
                   </ReactMarkdown>
                 </div>
               </div>
@@ -328,7 +301,7 @@ export function ContentEditor({
                   value={content}
                   onChange={(e) => onChange(e.target.value)}
                   className="w-full h-full p-6 bg-background text-foreground placeholder-muted-foreground outline-none font-mono text-sm leading-relaxed resize-none"
-                  placeholder="Escribe aquí..."
+                  placeholder="Write here..."
                 />
                 <div className="h-full p-6 bg-background overflow-y-auto">
                    <div className="prose dark:prose-invert prose-sm max-w-none">
@@ -347,24 +320,24 @@ export function ContentEditor({
                         }
                       }}
                     >
-                      {content || "*Previsualización*"}
+                      {content || "*Preview*"}
                     </ReactMarkdown>
                   </div>
                 </div>
               </div>
             )}
             
-            {/* Status Bar */}
-            <div className="border-t border-border bg-muted/30 px-4 py-2 flex items-center justify-between text-xs text-muted-foreground">
-               <div className="flex gap-4">
-                  <span>{content.length} caracteres</span>
-                  <span>{content.split(/\s+/).filter(w => w.length > 0).length} palabras</span>
-                  <span>{content.split("\n").length} líneas</span>
-               </div>
-               <div>
-                  Markdown Compatible
-               </div>
-            </div>
+            {/* Footer Status Bar */}
+          <div className="border-t border-border bg-card p-2 flex justify-between items-center text-xs text-muted-foreground px-4 rounded-b-lg">
+             <div className="flex gap-4">
+                 <span>{content.length} characters</span>
+                 <span>{content.split(/\s+/).filter(w => w.length > 0).length} words</span>
+                 <span>{content.split('\n').length} lines</span>
+             </div>
+             <div>
+                Markdown Supported
+             </div>
+          </div>
           </div>
         </div>
   );

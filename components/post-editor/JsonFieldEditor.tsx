@@ -14,7 +14,7 @@ export function JsonFieldEditor({ fieldKey, value, onChange, onDelete, isComplex
       setIsEditing(false);
       setError("");
     } catch (e) {
-      setError("JSON inválido: " + (e as Error).message);
+      setError("Invalid JSON: " + (e as Error).message);
     }
   };
 
@@ -36,8 +36,8 @@ export function JsonFieldEditor({ fieldKey, value, onChange, onDelete, isComplex
                 />
                 {error && <p className="text-destructive text-xs mt-2">{error}</p>}
                 <div className="flex justify-end gap-2 mt-3">
-                    <button onClick={handleCancel} className="text-xs text-muted-foreground hover:text-foreground px-3 py-1">Cancelar</button>
-                    <button onClick={handleSave} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90">Guardar JSON</button>
+                    <button onClick={handleCancel} className="text-xs text-muted-foreground hover:text-foreground px-3 py-1">Cancel</button>
+                    <button onClick={handleSave} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90">Save JSON</button>
                 </div>
             </div>
         </div>
@@ -49,21 +49,21 @@ export function JsonFieldEditor({ fieldKey, value, onChange, onDelete, isComplex
         <div className="flex justify-between items-start mb-2">
              <p className="text-sm text-muted-foreground">
                {isComplexArray 
-                 ? `Campo complejo con ${value.length} elementos`
-                 : "Campo objeto complejo"}
+                 ? `Complex field with ${value.length} items`
+                 : "Complex object field"}
              </p>
              <button
                 onClick={() => { setText(JSON.stringify(value, null, 2)); setIsEditing(true); }}
                 className="text-xs flex items-center gap-1 text-primary hover:text-primary/80 transition-colors"
-                title="Editar JSON"
+                title="Edit JSON"
              >
                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                 Editar JSON
+                 Edit JSON
              </button>
         </div>
         <details className="mt-2">
             <summary className="text-sm text-muted-foreground cursor-pointer hover:text-foreground select-none">
-            Ver JSON Actual
+            View Current JSON
             </summary>
             <pre className="mt-2 text-xs text-muted-foreground overflow-auto max-h-40 bg-muted/50 p-2 rounded border border-border">
             {JSON.stringify(value, null, 2)}

@@ -10,6 +10,11 @@ export default async function SettingsProfilePage() {
     redirect("/");
   }
 
+  // Verificar si el usuario tiene la app instalada
+  if (!session.appInstalled) {
+    redirect("/setup");
+  }
+
   return (
     <div className="space-y-6">
       <div>

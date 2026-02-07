@@ -1,7 +1,19 @@
 import { Separator } from "@/components/ui/separator";
 import { AppearanceForm } from "./appearance-form";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-export default function SettingsAppearancePage() {
+export default async function SettingsAppearancePage() {
+  const session = await auth();
+  
+    if (!session?.user || session.error === "RefreshAccessTokenError") {
+      redirect("/");
+    }
+  
+    // Verificar si el usuario tiene la app instalada
+    if (!session.appInstalled) {
+      redirect("/setup");
+    }
   return (
     <div className="space-y-6">
       <div>

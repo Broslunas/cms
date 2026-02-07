@@ -108,14 +108,14 @@ export function DiffViewer({ oldValue, newValue }: DiffViewerProps) {
   }, [oldValue, newValue]);
 
   if (!oldValue && !newValue) {
-    return <div className="text-center p-4 text-muted-foreground">Sin contenido</div>;
+    return <div className="text-center p-4 text-muted-foreground">No content</div>;
   }
 
   return (
     <div className="font-mono text-xs border border-border rounded-md overflow-hidden bg-card flex flex-col h-full max-h-[70vh]">
        <div className="grid grid-cols-2 divide-x divide-border bg-muted/50 border-b border-border sticky top-0 z-10">
           <div className="p-2 text-center text-muted-foreground font-medium">Original</div>
-          <div className="p-2 text-center text-muted-foreground font-medium">Actual (Borrador)</div>
+          <div className="p-2 text-center text-muted-foreground font-medium">Current (Draft)</div>
        </div>
        <div className="overflow-auto custom-scrollbar flex-1 bg-background">
            <table className="w-full border-collapse table-fixed">
@@ -127,7 +127,7 @@ export function DiffViewer({ oldValue, newValue }: DiffViewerProps) {
                </colgroup>
                <tbody>
                   {diffRows.length === 0 ? (
-                      <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No hay cambios</td></tr>
+                      <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No changes</td></tr>
                   ) : (
                       diffRows.map((row, idx) => (
                           <tr key={idx} className="hover:bg-muted/5 group">

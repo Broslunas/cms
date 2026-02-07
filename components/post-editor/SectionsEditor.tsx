@@ -55,12 +55,12 @@ export function SectionsEditor({
     const handleJsonSave = () => {
         try {
             const parsed = JSON.parse(jsonText);
-            if (!Array.isArray(parsed)) throw new Error("Debe ser un array");
+            if (!Array.isArray(parsed)) throw new Error("Must be an array");
             onChange(parsed);
             setIsJsonMode(false);
             setJsonError("");
         } catch (e) {
-            setJsonError("JSON inválido: " + (e as Error).message);
+            setJsonError("Invalid JSON: " + (e as Error).message);
         }
     };
 
@@ -74,7 +74,7 @@ export function SectionsEditor({
             : null;
 
         if (!transcriptionField) {
-            toast.error("No se encontró una transcripción para generar secciones.");
+            toast.error("No transcription found to generate sections.");
             return;
         }
 
@@ -83,12 +83,12 @@ export function SectionsEditor({
             .join("\n");
 
         if (transcriptionText.length < 100) {
-            toast.error("La transcripción es demasiado corta para generar secciones.");
+            toast.error("Transcription is too short to generate sections.");
             return;
         }
 
         setIsGenerating(true);
-        const toastId = toast.loading("Generando capítulos con IA...");
+        const toastId = toast.loading("Generating chapters with AI...");
 
         try {
             const res = await fetch("/api/ai/process", {
@@ -100,21 +100,21 @@ export function SectionsEditor({
                 })
             });
 
-            if (!res.ok) throw new Error("Error en la respuesta de la IA");
+            if (!res.ok) throw new Error("AI response error");
             const data = await res.json();
             
             if (Array.isArray(data)) {
                 if (value.length > 0) {
-                    if (confirm("Se reemplazarán las secciones actuales. ¿Continuar?")) {
+                    if (confirm("Current sections will be replaced. Continue?")) {
                         onChange(data);
-                        toast.success("Secciones generadas correctamente", { id: toastId });
+                        toast.success("Sections generated successfully", { id: toastId });
                     }
                 } else {
                     onChange(data);
-                    toast.success("Secciones generadas correctamente", { id: toastId });
+                    toast.success("Sections generated successfully", { id: toastId });
                 }
             } else {
-                throw new Error("Formato de respuesta inválido");
+                throw new Error("Invalid response format");
             }
         } catch (error: any) {
             console.error("AI Section generation error:", error);
@@ -142,8 +142,8 @@ export function SectionsEditor({
                         </svg>
                     </button>
                     <div>
-                         <p className="text-sm font-medium text-foreground">Editor de Secciones</p>
-                         <p className="text-xs text-muted-foreground">{value.length} secciones</p>
+                         <p className="text-sm font-medium text-foreground">Sections Editor</p>
+                         <p className="text-xs text-muted-foreground">{value.length} sections</p>
                     </div>
               </div>
               <div className="flex items-center gap-2">
@@ -155,14 +155,14 @@ export function SectionsEditor({
                             className={`text-xs px-2 py-1.5 rounded border flex items-center gap-1.5 transition-colors bg-indigo-500/10 text-indigo-500 border-indigo-500/20 hover:bg-indigo-500/20`}
                         >
                             {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
-                            Auto-Generar (IA)
+                            Auto-Generate (AI)
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); toggleJsonMode(); }}
                             className={`text-xs px-2 py-1.5 rounded border flex items-center gap-1.5 transition-colors ${isJsonMode ? 'bg-primary/10 text-primary border-primary/20' : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted'}`}
                         >
                             <Type className="w-3 h-3" />
-                            {isJsonMode ? 'Cancelar JSON' : 'Editar JSON'}
+                            {isJsonMode ? 'Cancel JSON' : 'Edit JSON'}
                         </button>
                     </>
                  )}
@@ -177,13 +177,13 @@ export function SectionsEditor({
                             value={jsonText}
                             onChange={(e) => setJsonText(e.target.value)}
                             className="w-full h-64 bg-background text-foreground font-mono text-xs p-3 rounded border border-input focus:outline-none focus:border-ring resize-y"
-                            placeholder="Pega tu JSON aquí..."
+                            placeholder="Paste your JSON here..."
                             spellCheck={false}
                         />
                         {jsonError && <p className="text-destructive text-xs">{jsonError}</p>}
                         <div className="flex justify-end gap-2">
-                            <button onClick={toggleJsonMode} className="text-xs text-muted-foreground hover:text-foreground px-3 py-1">Cancelar</button>
-                            <button onClick={handleJsonSave} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90">Guardar Cambios</button>
+                            <button onClick={toggleJsonMode} className="text-xs text-muted-foreground hover:text-foreground px-3 py-1">Cancel</button>
+                            <button onClick={handleJsonSave} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90">Save Changes</button>
                         </div>
                     </div>
                  ) : (
@@ -192,14 +192,14 @@ export function SectionsEditor({
                             {value.length === 0 && (
                                 <div className="py-12 flex flex-col items-center justify-center border border-dashed border-border rounded-lg bg-muted/20">
                                     <List className="w-8 h-8 text-muted-foreground mb-3 opacity-20" />
-                                    <p className="text-sm text-muted-foreground">No hay secciones definidas.</p>
-                                    <p className="text-xs text-muted-foreground/60 mt-1">Usa la IA para generarlas desde la transcripción.</p>
+                                    <p className="text-sm text-muted-foreground">No sections defined.</p>
+                                    <p className="text-xs text-muted-foreground/60 mt-1">Use AI to generate from transcription.</p>
                                 </div>
                             )}
                             {value.map((item, index) => (
                             <div key={index} className="flex gap-3 bg-card border border-border p-3 rounded-md group hover:border-input transition-colors items-center">
                                 <div className="w-24 shrink-0">
-                                <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mb-1 block">Tiempo</label>
+                                <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mb-1 block">Time</label>
                                 <input
                                     type="text"
                                     value={item.time || ""}
@@ -209,19 +209,19 @@ export function SectionsEditor({
                                 />
                                 </div>
                                 <div className="flex-1">
-                                <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mb-1 block">Título</label>
+                                <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mb-1 block">Title</label>
                                 <input
                                     type="text"
                                     value={item.title || ""}
                                     onChange={(e) => handleUpdate(index, "title", e.target.value)}
-                                    placeholder="Título de la sección..."
+                                    placeholder="Section title..."
                                     className="w-full bg-background border border-input rounded px-3 py-1.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                                 />
                                 </div>
                                 <button
                                 onClick={() => handleRemove(index)}
                                 className="mt-4 text-muted-foreground hover:text-destructive p-1 rounded hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
-                                title="Eliminar sección"
+                                title="Delete section"
                                 >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
@@ -234,7 +234,7 @@ export function SectionsEditor({
                             className="mt-4 w-full py-2 border border-dashed border-border rounded-md text-xs text-muted-foreground hover:text-foreground hover:border-input hover:bg-muted/50 transition-all flex items-center justify-center gap-2"
                         >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                            Añadir Nueva Sección
+                            Add New Section
                         </button>
                     </>
                  )}

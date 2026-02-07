@@ -1,133 +1,133 @@
 # 🚀 Broslunas CMS
 
-Un sistema de gestión de contenidos (CMS) basado en Git diseñado específicamente para el ecosistema Astro. Permite gestionar tus Content Collections mediante una interfaz visual intuitiva, sincronizando los datos directamente con tus repositorios de GitHub.
+A Git-based Content Management System (CMS) designed specifically for the Astro ecosystem. It allows you to manage your Content Collections through an intuitive visual interface, syncing data directly with your GitHub repositories.
 
 ![Broslunas CMS](https://img.shields.io/badge/Status-MVP-green)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green)
 
-## ✨ Características
+## ✨ Features
 
-- 🔐 **Autenticación con GitHub OAuth** - Conexión segura con tu cuenta de GitHub
-- ⚙️ **Onboarding con GitHub App** - Flujo guiado para instalar y configurar permisos
-- 📦 **Importación automática** - Escanea y importa archivos Markdown de tus repositorios
-- ✏️ **Editor visual** - Interfaz moderna para editar metadata y contenido
-- 🎙️ **Campos dinámicos** - Soporte para transcripciones y campos complejos
-- 🔄 **Sincronización bidireccional** - MongoDB como caché + Git como fuente de verdad
-- ✅ **Validación con Zod** - Type-safety en todo el proceso
-- 📝 **Commits automáticos** - Guarda cambios directamente en GitHub
+- 🔐 **GitHub OAuth Authentication** - Secure connection with your GitHub account
+- ⚙️ **GitHub App Onboarding** - Guided flow to install and configure permissions
+- 📦 **Automatic Import** - Scans and imports Markdown files from your repositories
+- ✏️ **Visual Editor** - Modern interface for editing metadata and content
+- 🎙️ **Dynamic Fields** - Support for transcriptions and complex fields
+- 🔄 **Bidirectional Sync** - MongoDB as cache + Git as source of truth
+- ✅ **Zod Validation** - Type-safety throughout the process
+- 📝 **Automatic Commits** - Saves changes directly to GitHub
 
-## 🛠️ Stack Tecnológico
+## 🛠️ Tech Stack
 
 - **Framework**: Next.js 16 (App Router)
-- **Autenticación**: NextAuth.js v5 con GitHub OAuth
-- **Base de datos**: MongoDB (Atlas)
+- **Authentication**: NextAuth.js v5 with GitHub OAuth
+- **Database**: MongoDB (Atlas)
 - **Git API**: Octokit
-- **Parsing Markdown**: gray-matter
-- **Validación**: Zod
-- **Estilos**: Tailwind CSS v4
+- **Markdown Parsing**: gray-matter
+- **Validation**: Zod
+- **Styles**: Tailwind CSS v4
 
-## 📋 Requisitos Previos
+## 📋 Prerequisites
 
-- Node.js 20+ y npm
-- Cuenta de MongoDB Atlas (gratuita)
-- Cuenta de GitHub
-- **GitHub App** configurada (ver instrucciones abajo)
+- Node.js 20+ and npm
+- MongoDB Atlas account (free)
+- GitHub account
+- **GitHub App** configured (see instructions below)
 
-## 🚀 Instalación
+## 🚀 Installation
 
-### 1. Clonar el repositorio
+### 1. Clone the repository
 
-\`\`\`bash
-git clone <tu-repo>
+```bash
+git clone <your-repo>
 cd cms
 npm install
-\`\`\`
+```
 
-### 2. Configurar MongoDB Atlas
+### 2. Configure MongoDB Atlas
 
-1. Crea una cuenta en [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Crea un nuevo cluster (M0 - gratuito)
-3. Crea un usuario de base de datos
-4. Obtén tu connection string
+1. Create an account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create a new cluster (M0 - free)
+3. Create a database user
+4. Get your connection string
 
-### 3. Configurar GitHub App
+### 3. Configure GitHub App
 
-**⚠️ IMPORTANTE**: Este CMS requiere una **GitHub App**, NO una OAuth App tradicional.
+**⚠️ IMPORTANT**: This CMS requires a **GitHub App**, NOT a traditional OAuth App.
 
-**Guía rápida:**
+**Quick Guide:**
 
-1. Ve a [GitHub Apps](https://github.com/settings/apps/new)
-2. Configura:
-   - **GitHub App name**: Broslunas CMS (o el que prefieras)
+1. Go to [GitHub Apps](https://github.com/settings/apps/new)
+2. Configure:
+   - **GitHub App name**: Broslunas CMS (or your preference)
    - **Homepage URL**: `http://localhost:3000`
    - **Callback URL**: `http://localhost:3000/api/auth/callback/github`
-   - **Webhook**: Desactivado
-3. **Permisos de repositorio**:
-   - **Contents**: `Read and write` ✅ **MUY IMPORTANTE**
-   - **Metadata**: `Read-only` (automático)
-4. Guarda el **Client ID** y genera un **Client Secret**
-5. Copia el **App Slug** (aparece en la URL después de crear)
-6. Instala la app en tu cuenta de GitHub
+   - **Webhook**: Disabled
+3. **Repository Permissions**:
+   - **Contents**: `Read and write` ✅ **VERY IMPORTANT**
+   - **Metadata**: `Read-only` (automatic)
+4. Save the **Client ID** and generate a **Client Secret**
+5. Copy the **App Slug** (appears in the URL after creation)
+6. Install the app on your GitHub account
 
-**📚 Documentación completa**: Ver [`GITHUB_APP_SETUP.md`](./GITHUB_APP_SETUP.md) para instrucciones detalladas paso a paso.
+**📚 Complete Documentation**: See [`GITHUB_APP_SETUP.md`](./GITHUB_APP_SETUP.md) for detailed step-by-step instructions.
 
-### 4. Configurar variables de entorno
+### 4. Configure Environment Variables
 
-Crea un archivo `.env` en la raíz del proyecto:
+Create a `.env` file in the project root:
 
-\`\`\`bash
+```bash
 # MongoDB
-MONGODB_URI=mongodb+srv://usuario:password@cluster.mongodb.net/astro-cms?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/astro-cms?retryWrites=true&w=majority
 
 # NextAuth
 NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=genera-un-secret-aleatorio-aqui
+NEXTAUTH_SECRET=generate-a-random-secret-here
 
-# GitHub App (NO OAuth App)
-GITHUB_ID=tu-github-app-client-id
-GITHUB_SECRET=tu-github-app-client-secret
-GITHUB_APP_NAME=tu-github-app-slug
-\`\`\`
+# GitHub App (NOT OAuth App)
+GITHUB_ID=your-github-app-client-id
+GITHUB_SECRET=your-github-app-client-secret
+GITHUB_APP_NAME=your-github-app-slug
+```
 
-**Generar NEXTAUTH_SECRET:**
-\`\`\`bash
+**Generate NEXTAUTH_SECRET:**
+```bash
 openssl rand -base64 32
-\`\`\`
+```
 
-### 5. Ejecutar el proyecto
+### 5. Run the Project
 
-\`\`\`bash
+```bash
 npm run dev
-\`\`\`
+```
 
-Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## 📖 Uso
+## 📖 Usage
 
-### 1. Autenticación
+### 1. Authentication
 
-1. Haz clic en "Continuar con GitHub"
-2. Autoriza la aplicación
-3. Serás redirigido al dashboard
+1. Click on "Continue with GitHub"
+2. Authorize the application
+3. You will be redirected to the dashboard
 
-### 2. Importar contenido
+### 2. Import Content
 
-1. En el dashboard, selecciona un repositorio
-2. Haz clic en "Importar"
-3. El sistema escaneará `src/content/` buscando archivos `.md` y `.mdx`
-4. Los posts se importarán a MongoDB
+1. In the dashboard, select a repository
+2. Click on "Import"
+3. The system will scan `src/content/` looking for `.md` and `.mdx` files
+4. Posts will be imported into MongoDB
 
-### 3. Editar posts
+### 3. Edit Posts
 
-1. Haz clic en un post de la lista
-2. Edita metadata (título, slug, tags, etc.)
-3. Edita transcripciones si las hay
-4. Edita el contenido en Markdown
-5. **Guardar**: Guarda solo en MongoDB (estado: "modified")
-6. **Guardar y Commitear**: Guarda en MongoDB y hace commit a GitHub (estado: "synced")
+1. Click on a post from the list
+2. Edit metadata (title, slug, tags, etc.)
+3. Edit transcriptions if available
+4. Edit markdown content
+5. **Save**: Saves only to MongoDB (status: "modified")
+6. **Save & Commit**: Saves to MongoDB and commits to GitHub (status: "synced")
 
-## 🏗️ Arquitectura
+## 🏗️ Architecture
 
 ```
 ┌─────────────┐
@@ -140,50 +140,50 @@ Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
        v            v
 ┌─────────┐  ┌──────────┐
 │ MongoDB │  │  GitHub  │
-│ (Caché) │  │ (Source) │
+│ (Cache) │  │ (Source) │
 └─────────┘  └──────────┘
 ```
 
-**Flujo de datos:**
+**Data Flow:**
 
-1. **Importación**: GitHub → MongoDB
-2. **Edición**: UI → MongoDB
-3. **Commit**: MongoDB → GitHub (con serialización a Markdown)
+1. **Import**: GitHub → MongoDB
+2. **Edit**: UI → MongoDB
+3. **Commit**: MongoDB → GitHub (with Markdown serialization)
 
-## 📦 Estructura del proyecto
+## 📦 Project Structure
 
-\`\`\`
+```
 app/
 ├── api/
-│   ├── auth/[...nextauth]/ # Endpoints de autenticación
-│   ├── repos/              # Listar repositorios
-│   ├── import/             # Importar contenido
-│   └── posts/              # CRUD de posts
+│   ├── auth/[...nextauth]/ # Auth endpoints
+│   ├── repos/              # List repositories
+│   ├── import/             # Import content
+│   └── posts/              # Post CRUD
 ├── dashboard/
-│   ├── page.tsx            # Dashboard principal
-│   ├── repos/              # Lista de posts
-│   └── editor/[id]/        # Editor de posts
+│   ├── page.tsx            # Main Dashboard
+│   ├── repos/              # Post list
+│   └── editor/[id]/        # Post editor
 components/
 ├── LoginButton.tsx
 ├── RepoSelector.tsx
 └── PostEditor.tsx
 lib/
-├── auth.ts                 # Configuración NextAuth
-├── mongodb.ts              # Cliente MongoDB
-├── octokit.ts              # Utilidades GitHub API
-├── markdown.ts             # Parsing/serialización
-└── schemas.ts              # Validación Zod
-\`\`\`
+├── auth.ts                 # NextAuth config
+├── mongodb.ts              # MongoDB client
+├── octokit.ts              # GitHub API utilities
+├── markdown.ts             # Parsing/serialization
+├── schemas.ts              # Zod validation
+```
 
-## 🔍 Modelo de datos (MongoDB)
+## 🔍 Data Model (MongoDB)
 
-\`\`\`typescript
+```typescript
 {
   _id: ObjectId,
-  userId: string,              // ID del usuario de NextAuth
+  userId: string,              // NextAuth user ID
   repoId: string,              // "owner/repo"
   filePath: string,            // "src/content/blog/post.md"
-  sha: string,                 // SHA del archivo en GitHub
+  sha: string,                 // SHA of the file on GitHub
   
   metadata: {
     title: string,
@@ -196,47 +196,47 @@ lib/
     }]
   },
   
-  content: string,             // Cuerpo del Markdown
+  content: string,             // Markdown body
   status: "synced" | "draft" | "modified",
   lastCommitAt: Date,
   createdAt: Date,
   updatedAt: Date
 }
-\`\`\`
+```
 
-## 🐛 Solución de problemas
+## 🐛 Troubleshooting
 
 ### Error: "No GitHub access token found"
 
-- Verifica que los scopes de GitHub incluyan `repo`
-- Cierra sesión y vuelve a autenticarte
+- Verify that GitHub scopes include `repo`
+- Log out and authenticate again
 
-### Error de conflicto (409) al commitear
+### Conflict Error (409) when committing
 
-- El archivo fue modificado externamente
-- Sincroniza los cambios desde GitHub o sobrescribe manualmente
+- The file was modified externally
+- Sync changes from GitHub or overwrite manually
 
-### Posts no se importan
+### Posts not importing
 
-- Verifica que el repositorio tenga una carpeta `src/content/`
-- Verifica que los archivos tengan frontmatter válido
+- Verify the repository has a `src/content/` folder
+- Verify files have valid frontmatter
 
 ## 🗺️ Roadmap
 
-- [x] Fase 1: MVP (Autenticación, importación, editor básico)
-- [ ] Fase 2: Formularios dinámicos avanzados
-- [ ] Fase 3: Webhooks para sync en tiempo real
-- [ ] Fase 4: Media library (gestión de imágenes)
-- [ ] Fase 5: Previsualización en vivo
+- [x] Phase 1: MVP (Auth, import, basic editor)
+- [ ] Phase 2: Advanced dynamic forms
+- [ ] Phase 3: Webhooks for real-time sync
+- [ ] Phase 4: Media library (image management)
+- [ ] Phase 5: Live preview
 
-## 📄 Licencia
+## 📄 License
 
 MIT
 
-## 🤝 Contribuciones
+## 🤝 Contributions
 
-Las contribuciones son bienvenidas! Por favor abre un issue o PR.
+Contributions are welcome! Please open an issue or PR.
 
 ---
 
-Hecho con ❤️ para el ecosistema Astro
+Made with ❤️ for the Astro ecosystem

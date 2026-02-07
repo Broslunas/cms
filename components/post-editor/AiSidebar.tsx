@@ -16,7 +16,7 @@ interface AiSidebarProps {
 
 export function AiSidebar({ isOpen, onClose, content }: AiSidebarProps) {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", text: "Hola, soy tu asistente de contenido. ¿En qué puedo ayudarte hoy con este post?" }
+    { role: "assistant", text: "Hello, I am your content assistant. How can I help you today with this post?" }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -49,12 +49,12 @@ export function AiSidebar({ isOpen, onClose, content }: AiSidebarProps) {
         }),
       });
 
-      if (!res.ok) throw new Error("Error en la respuesta");
+      if (!res.ok) throw new Error("Error in response");
 
       const data = await res.json();
       setMessages(prev => [...prev, { role: "assistant", text: data.result }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: "assistant", text: "Lo siento, tuve un problema al procesar tu solicitud." }]);
+      setMessages(prev => [...prev, { role: "assistant", text: "Sorry, I had a problem processing your request." }]);
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +69,7 @@ export function AiSidebar({ isOpen, onClose, content }: AiSidebarProps) {
         {/* Header */}
         <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-muted/40">
             <h3 className="font-semibold flex items-center gap-2">
-                <span className="text-xl">🤖</span> Chat Asistente
+                <span className="text-xl">🤖</span> Assistant Chat
             </h3>
             <button onClick={onClose} className="p-1 hover:bg-muted rounded text-muted-foreground">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,7 +121,7 @@ export function AiSidebar({ isOpen, onClose, content }: AiSidebarProps) {
                             handleSend();
                         }
                     }}
-                    placeholder="Pregunta sobre tu post..."
+                    placeholder="Ask about your post..."
                     className="flex-1 resize-none h-10 min-h-[40px] max-h-32 bg-muted border-transparent focus:bg-background border focus:border-ring rounded-md px-3 py-2 text-sm focus:outline-none"
                     rows={1}
                 />
@@ -136,7 +136,7 @@ export function AiSidebar({ isOpen, onClose, content }: AiSidebarProps) {
                 </button>
             </div>
             <p className="text-[10px] text-muted-foreground mt-2 text-center">
-                La IA puede cometer errores.
+                AI can make mistakes.
             </p>
         </div>
     </div>

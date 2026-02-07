@@ -14,7 +14,7 @@ import { DiffViewer } from "./DiffViewer";
 import { EditorHeader } from "./post-editor/EditorHeader";
 import { MetadataEditor } from "./post-editor/MetadataEditor";
 import { ContentEditor } from "./post-editor/ContentEditor";
-import { Wand2 } from "lucide-react";
+import { Wand2, AlertTriangle, Lock, Sparkles, BookOpen } from "lucide-react";
 
 
 interface PostMetadata {
@@ -139,6 +139,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [isLimitedStorage, setIsLimitedStorage] = useState(false);
+  const [uploadStorage, setUploadStorage] = useState<'repo' | 'default'>('repo');
 
   useEffect(() => {
     fetch(`/api/storage/status?repoId=${encodeURIComponent(post.repoId)}`)
@@ -252,13 +253,13 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       // Skip modal, show info and upload directly
       toast.info(
         <div className="space-y-1">
-          <p className="font-semibold">Usando Almacenamiento Free Limitado</p>
+          <p className="font-semibold">Using Free Limited Storage</p>
           <ul className="text-[10px] list-disc list-inside opacity-90">
-            <li>Solo imágenes</li>
-            <li>Convertido auto a WebP</li>
-            <li>Máximo 300KB</li>
-            <li>Nombre aleatorio</li>
-            <li>Carpeta raíz</li>
+            <li>Images only</li>
+            <li>Auto converted to WebP</li>
+            <li>Max 300KB</li>
+            <li>Random name</li>
+            <li>Root folder</li>
           </ul>
         </div>,
         { duration: 5000 }
@@ -291,7 +292,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       const folderArg = isLimitedStorage ? "" : uploadFolder;
       const filenameArg = isLimitedStorage ? "" : uploadFilename;
 
-      const response = await fetch(`/api/upload?repoId=${encodeURIComponent(post.repoId)}&folder=${encodeURIComponent(folderArg)}&filename=${encodeURIComponent(filenameArg)}`, {
+      const response = await fetch(`/api/upload?repoId=${encodeURIComponent(post.repoId)}&folder=${encodeURIComponent(folderArg)}&filename=${encodeURIComponent(filenameArg)}&useDefault=${uploadStorage === 'default'}`, {
         method: "POST",
         body: formData,
       });
@@ -310,18 +311,18 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             // Simple metadata update
             updateMetadata(uploadTarget.key, data.url);
           }
-          toast.success("Imagen subida y actualizada");
+          toast.success("Image uploaded and updated");
         } else {
           insertText(`![${file.name}](${data.url})`, "");
-          toast.success("Imagen subida e insertada");
+          toast.success("Image uploaded and inserted");
         }
       } else {
         const err = await response.json();
-        toast.error(err.error || "Error al subir");
+        toast.error(err.error || "Upload error");
       }
     } catch (error) {
       console.error("Upload error:", error);
-      toast.error("Error de conexión al subir");
+      toast.error("Connection error during upload");
     } finally {
       setIsUploading(false);
       setPendingFile(null);
@@ -336,12 +337,12 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
   // --- Handlers for Metadata Tools ---
   const handleAddField = () => {
     if (!newFieldName.trim()) {
-      toast.error("El nombre del campo es requerido");
+      toast.error("Field name is required");
       return;
     }
     
     if (metadata[newFieldName]) {
-      toast.error("Este campo ya existe");
+      toast.error("This field already exists");
       return;
     }
 
@@ -356,7 +357,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
     updateMetadata(newFieldName, initialValue);
     setNewFieldName("");
     setShowAddField(false);
-    toast.success(`Campo '${newFieldName}' añadido`);
+    toast.success(`Field '${newFieldName}' added`);
   };
 
   const loadImportablePosts = async () => {
@@ -369,7 +370,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
         setImportablePosts(posts.filter((p: any) => p._id !== post._id));
       }
     } catch (e) {
-      toast.error("Error cargando posts");
+      toast.error("Error loading posts");
     } finally {
       setLoadingPosts(false);
     }
@@ -398,7 +399,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
     }
 
     setShowImportModal(false);
-    toast.success("Metadatos y ruta importados. Revisa el título.");
+    toast.success("Metadata and path imported. Check the title.");
   };
 
   const handleDeleteField = (key: string) => {
@@ -409,7 +410,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
 
   const handleDelete = async () => {
     setDeleting(true);
-    const toastId = toast.loading("Eliminando post...");
+    const toastId = toast.loading("Deleting post...");
 
     try {
       const response = await fetch("/api/posts/delete", {
@@ -423,17 +424,17 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       });
 
       if (response.ok) {
-        toast.success("Post eliminado correctamente", { id: toastId });
+        toast.success("Post deleted successfully", { id: toastId });
         router.push(`/dashboard/repos?repo=${encodeURIComponent(post.repoId)}`);
       } else {
         const error = await response.json();
-        toast.error(`Error al eliminar: ${error.error}`, { id: toastId });
+        toast.error(`Error deleting: ${error.error}`, { id: toastId });
         setDeleting(false);
         setShowDeleteConfirm(false);
       }
     } catch (error) {
       console.error("Delete error:", error);
-      toast.error("Error al eliminar el post", { id: toastId });
+      toast.error("Error deleting the post", { id: toastId });
       setDeleting(false);
       setShowDeleteConfirm(false);
     }
@@ -441,12 +442,12 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
 
   const handleAiGenerate = async () => {
     if (!aiPrompt.trim()) {
-      toast.error("Por favor, introduce un prompt");
+      toast.error("Please enter a prompt");
       return;
     }
 
     setIsGenerating(true);
-    const toastId = toast.loading("Generando contenido con IA...");
+    const toastId = toast.loading("Generating content with AI...");
 
     // Si el usuario eligió un post de referencia, extraemos su esquema
     let currentSchema = schema;
@@ -486,13 +487,13 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
           metadata: data.metadata || {},
           content: data.content || ""
         });
-        toast.success("Generación completada. Revisa el resultado.", { id: toastId });
+        toast.success("Generation completed. Check the result.", { id: toastId });
       } else {
         const error = await res.json();
-        toast.error(`Error: ${error.error || "Error desconocido"}`, { id: toastId });
+        toast.error(`Error: ${error.error || "Unknown error"}`, { id: toastId });
       }
     } catch (e) {
-      toast.error("Error conectando con la IA", { id: toastId });
+      toast.error("Error connecting to AI", { id: toastId });
     } finally {
       setIsGenerating(false);
     }
@@ -511,7 +512,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
     setAiPreview(null);
     setShowAiModal(false);
     setAiPrompt("");
-    toast.success("¡Cambios aplicados correctamente!");
+    toast.success("Changes applied successfully!");
   };
 
   const handleHistoryRestore = (newMetadata: any, newContent: string, newSha: string) => {
@@ -530,7 +531,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       setSaving(true);
     }
 
-    const toastId = toast.loading(commitToGitHub ? "Guardando y commiteando..." : "Guardando...");
+    const toastId = toast.loading(commitToGitHub ? "Saving and committing..." : "Saving...");
 
     try {
       let response;
@@ -592,7 +593,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
           // Mostrar un toast personalizado con enlace al commit
           toast.success(
             <div className="flex flex-col gap-1">
-              <p className="font-medium">Cambios guardados y commiteados a GitHub</p>
+              <p className="font-medium">Changes saved and committed to GitHub</p>
               <a 
                 href={commitUrl} 
                 target="_blank" 
@@ -600,7 +601,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                 className="text-xs text-primary hover:underline flex items-center gap-1"
                 onClick={(e) => e.stopPropagation()}
               >
-                Ver commit en GitHub
+                View commit on GitHub
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
@@ -609,7 +610,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             { duration: 6000 }
           );
         } else {
-          toast.success("Cambios guardados localmente", { id: toastId });
+          toast.success("Changes saved locally", { id: toastId });
         }
         
         if (isNew && result.postId) {
@@ -634,7 +635,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       }
     } catch (error) {
       console.error("Save error:", error);
-      toast.error("Error al guardar cambios", { id: toastId });
+      toast.error("Error saving changes", { id: toastId });
     } finally {
       setSaving(false);
       setCommitting(false);
@@ -650,10 +651,10 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
               const data = await res.json();
               setBlameRanges(data.ranges);
           } else {
-              toast.error("Error cargando Blame");
+              toast.error("Error loading Blame");
           }
       } catch (e) {
-          toast.error("Error conectando para Blame");
+          toast.error("Connection error for Blame");
       } finally {
           setLoadingBlame(false);
       }
@@ -709,12 +710,12 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             <div className="space-y-1">
 
               <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <span className="text-foreground/60">Repositorio:</span> {post.repoId}
+                <span className="text-foreground/60">Repository:</span> {post.repoId}
               </p>
               
               {isNew ? (
                 <div className="mt-2">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Path del archivo</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">File Path</label>
                     <input 
                         type="text" 
                         value={createFilePath}
@@ -724,13 +725,13 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                    <span className="text-foreground/60">Archivo:</span> {post.filePath}
+                    <span className="text-foreground/60">File:</span> {post.filePath}
                 </p>
               )}
             </div>
             <div className="flex items-center gap-2">
                 {isCheckingSync && (
-                    <div className="animate-spin w-3 h-3 border-2 border-primary border-t-transparent rounded-full" title="Comprobando sincronización..." />
+                    <div className="animate-spin w-3 h-3 border-2 border-primary border-t-transparent rounded-full" title="Checking sync..." />
                 )}
                 <span
                 className={`px-3 py-1 rounded text-xs font-medium flex items-center gap-1.5 ${
@@ -738,10 +739,10 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                     ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20"
                     : "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20"
                 }`}
-                title={isSynced ? "Sincronizado con GitHub" : "Cambios locales no subidos o desactualizado"}
+                title={isSynced ? "Synced with GitHub" : "Local changes not uploaded or outdated"}
                 >
                 <span className={`w-1.5 h-1.5 rounded-full ${isSynced ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                {isSynced ? "Sincronizado" : "No Sincronizado"}
+                {isSynced ? "Synced" : "Not Synced"}
                 </span>
             </div>
           </div>
@@ -800,10 +801,10 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       <Modal
         isOpen={showDiffModal}
         onClose={() => setShowDiffModal(false)}
-        title="Diferencias de Contenido"
-        description="Comparando el contenido original (guardado) con tu borrador actual."
+        title="Content Differences"
+        description="Comparing original content (saved) with your current draft."
         className="max-w-6xl"
-        footer={<button onClick={()=>setShowDiffModal(false)} className="px-4 py-2 text-sm text-foreground bg-secondary rounded hover:bg-secondary/80">Cerrar</button>}
+        footer={<button onClick={()=>setShowDiffModal(false)} className="px-4 py-2 text-sm text-foreground bg-secondary rounded hover:bg-secondary/80">Close</button>}
       >
         <DiffViewer oldValue={diffOriginal} newValue={diffCurrent} />
       </Modal>
@@ -813,9 +814,9 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
         isOpen={showBlame}
         onClose={() => setShowBlame(false)}
         title="Git Blame Information"
-        description={`Historial de cambios línea por línea para ${post.filePath}`}
+        description={`Line-by-line change history for ${post.filePath}`}
         className="max-w-5xl"
-        footer={<button onClick={()=>setShowBlame(false)} className="px-4 py-2 text-sm text-foreground bg-secondary rounded hover:bg-secondary/80">Cerrar</button>}
+        footer={<button onClick={()=>setShowBlame(false)} className="px-4 py-2 text-sm text-foreground bg-secondary rounded hover:bg-secondary/80">Close</button>}
       >
         <div className="max-h-[70vh] overflow-y-auto">
             {loadingBlame && (
@@ -823,7 +824,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                      <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
                 </div>
             )}
-            {!loadingBlame && blameRanges.length === 0 && <p className="text-muted-foreground text-center p-4">No hay información de blame disponible.</p>}
+            {!loadingBlame && blameRanges.length === 0 && <p className="text-muted-foreground text-center p-4">No blame information available.</p>}
             {!loadingBlame && blameRanges.length > 0 && (
                 <div className="font-mono text-xs">
                     {blameRanges.map((range, idx) => (
@@ -837,7 +838,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                                     <span className="text-muted-foreground">
                                         {range.commit.committedDate && !isNaN(new Date(range.commit.committedDate).getTime())
                                             ? formatDistanceToNow(new Date(range.commit.committedDate), { addSuffix: true, locale: es })
-                                            : "Fecha desconocida"}
+                                            : "Unknown date"}
                                     </span>
                                 </div>
                                 <div className="text-muted-foreground truncate" title={range.commit.message}>
@@ -860,21 +861,21 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       <Modal
         isOpen={showAddField}
         onClose={() => setShowAddField(false)}
-        title="Añadir Nuevo Campo"
-        description="Define el nombre y el tipo del nuevo campo de metadatos."
+        title="Add New Field"
+        description="Define the name and type of the new metadata field."
         footer={
           <div className="flex justify-end gap-2">
             <button
                onClick={() => setShowAddField(false)}
                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
             >
-              Cancelar
+              Cancel
             </button>
             <button
                onClick={handleAddField}
                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded font-medium hover:bg-primary/90"
             >
-              Añadir
+              Add
             </button>
           </div>
         }
@@ -885,7 +886,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             <div className="bg-indigo-500/5 p-3 rounded-md border border-indigo-500/20 mb-4">
                 <p className="text-xs font-medium text-indigo-500 mb-2 flex items-center gap-2">
                     <Wand2 className="w-3 h-3" />
-                    Funciones Pro (IA & Audio)
+                    Pro Features (AI & Audio)
                 </p>
                 <div className="flex flex-wrap gap-2">
                     {!metadata.transcription && (
@@ -909,7 +910,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                                     : "bg-background border-border text-foreground hover:border-indigo-500/50"
                             }`}
                         >
-                            sections <span className="opacity-50 text-[10px]">(capítulos)</span>
+                            sections <span className="opacity-50 text-[10px]">(chapters)</span>
                         </button>
                     )}
                 </div>
@@ -921,7 +922,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             <div className="bg-muted/30 p-3 rounded-md border border-dashed border-border mb-4">
                 <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    Sugerencias del repositorio (config.ts)
+                    Repository suggestions (config.ts)
                 </p>
                 <div className="flex flex-wrap gap-2">
                     {Object.entries(suggestedFields)
@@ -943,36 +944,36 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                         </button>
                     ))}
                     {Object.entries(suggestedFields).filter(([key]) => !metadata[key]).length === 0 && (
-                        <p className="text-xs text-muted-foreground italic">Todos los campos sugeridos ya están añadidos.</p>
+                        <p className="text-xs text-muted-foreground italic">All suggested fields are already added.</p>
                     )}
                 </div>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Nombre del Campo (Key)</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Field Name (Key)</label>
             <input
               type="text"
               value={newFieldName}
               onChange={(e) => setNewFieldName(e.target.value)}
               className="w-full bg-background border border-input rounded p-2 text-sm text-foreground focus:border-ring outline-none"
-              placeholder="Ej: author, category, date..."
+              placeholder="Ex: author, category, date..."
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Tipo de Dato</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Data Type</label>
             <select
               value={newFieldType}
               onChange={(e) => setNewFieldType(e.target.value)}
               className="w-full bg-background border border-input rounded p-2 text-sm text-foreground focus:border-ring outline-none"
             >
-              <option value="string">Texto</option>
-              <option value="number">Número</option>
-              <option value="boolean">Booleano (Si/No)</option>
-              <option value="array">Lista (Tags)</option>
-              <option value="date">Fecha</option>
-              <option value="transcription">Transcripción (Deepgram)</option>
-              <option value="sections">Secciones (Capítulos)</option>
+              <option value="string">Text</option>
+              <option value="number">Number</option>
+              <option value="boolean">Boolean (Yes/No)</option>
+              <option value="array">List (Tags)</option>
+              <option value="date">Date</option>
+              <option value="transcription">Transcription (Deepgram)</option>
+              <option value="sections">Sections (Chapters)</option>
             </select>
           </div>
         </div>
@@ -981,68 +982,107 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       {/* Upload Modal */}
       <Modal
         isOpen={showUploadModal}
-        onClose={() => { setShowUploadModal(false); setPendingFile(null); }}
-        title="Subir Archivo"
-        description="Selecciona el directorio de destino para tu archivo en el almacenamiento."
+        onClose={() => {setShowUploadModal(false); setPendingFile(null);}}
+        title="Upload File"
+        description="Select the destination directory for your file in storage."
         footer={
-           <div className="flex justify-end gap-2">
-             <button
-               onClick={() => { setShowUploadModal(false); setPendingFile(null); }}
+          <div className="flex justify-end gap-2">
+            <button
+               onClick={() => {setShowUploadModal(false); setPendingFile(null);}}
                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
-             >
-               Cancelar
-             </button>
-             <button
-               onClick={confirmUpload}
-               disabled={isUploading}
-               className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
-             >
-               {isUploading && <div className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full" />}
-               {isUploading ? "Subiendo..." : "Subir ahora"}
-             </button>
-           </div>
+            >
+              Cancel
+            </button>
+            <button
+               onClick={() => pendingFile && performUpload(pendingFile)}
+               disabled={isUploading || !pendingFile}
+               className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded font-medium hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isUploading ? "Uploading..." : "Upload now"}
+            </button>
+          </div>
         }
       >
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-md italic text-xs text-muted-foreground">
-             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-             </svg>
-             Archivo seleccionado: {pendingFile?.name} ({pendingFile ? (pendingFile.size / 1024).toFixed(1) : 0} KB)
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Nombre del Archivo</label>
-            <div className="relative">
-                <input
-                    type="text"
-                    value={uploadFilename}
-                    onChange={(e) => setUploadFilename(e.target.value)}
-                    className="w-full bg-background border border-input rounded p-2 pl-8 text-sm text-foreground focus:border-ring outline-none"
-                    placeholder="ej: mi-imagen-bonita"
-                />
-                <svg className="w-4 h-4 absolute left-2.5 top-2.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+            {pendingFile && (
+                <div className="text-sm border border-border p-2 rounded bg-muted/20">
+                    <p className="font-semibold text-foreground mb-1">Selected file:</p>
+                    <p className="font-mono text-muted-foreground">{pendingFile.name} ({(pendingFile.size / 1024).toFixed(1)} KB)</p>
+                </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-2">Storage Destination</label>
+              <div className="flex flex-col gap-2">
+                <label className={`flex items-center gap-3 p-3 rounded-md border cursor-pointer hover:bg-muted/50 transition-all ${uploadStorage === 'repo' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border'}`}>
+                   <input 
+                      type="radio" 
+                      name="uploadStorage" 
+                      className="mt-0.5 text-primary focus:ring-primary"
+                      checked={uploadStorage === 'repo'} 
+                      onChange={()=>setUploadStorage('repo')} 
+                      disabled={isLimitedStorage} 
+                   />
+                   <div className="flex flex-col">
+                      <span className={`text-sm font-medium ${isLimitedStorage ? 'text-muted-foreground line-through' : 'text-foreground'}`}>Repository Storage</span>
+                      <span className="text-[10px] text-muted-foreground">High quality, custom filenames, folder support.</span>
+                   </div>
+                </label>
+                
+                <label className={`flex items-center gap-3 p-3 rounded-md border cursor-pointer hover:bg-muted/50 transition-all ${uploadStorage === 'default' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border'}`}>
+                   <input 
+                      type="radio" 
+                      name="uploadStorage" 
+                      className="mt-0.5 text-primary focus:ring-primary"
+                      checked={uploadStorage === 'default'} 
+                      onChange={()=>setUploadStorage('default')} 
+                   />
+                   <div className="flex flex-col">
+                      <span className="text-sm font-medium text-foreground">Server Optimization</span>
+                      <span className="text-[10px] text-muted-foreground">Auto-compression (WebP), random filenames, max 300KB.</span>
+                   </div>
+                </label>
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Directorio de Destino</label>
-            <div className="relative">
-                <input
-                    type="text"
-                    value={uploadFolder}
-                    onChange={(e) => setUploadFolder(e.target.value)}
-                    className="w-full bg-background border border-input rounded p-2 pl-8 text-sm text-foreground focus:border-ring outline-none"
-                    placeholder="images, uploads, assets/blog..."
-                />
-                <svg className="w-4 h-4 absolute left-2.5 top-2.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-2">
-                El archivo se guardará en: <span className="font-mono">{uploadFolder || '(raíz)'}/{uploadFilename || 'uuid'}.{pendingFile?.name.split('.').pop()}</span>
-            </p>
-          </div>
+
+            {uploadStorage === 'default' ? (
+                <div className="text-sm bg-blue-500/10 text-blue-600 dark:text-blue-400 p-3 rounded border border-blue-500/20">
+                    <p className="font-semibold text-xs mb-1 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        Optimized Storage Mode
+                    </p>
+                    <ul className="list-disc list-inside text-[10px] space-y-0.5 opacity-90">
+                        <li>Images are automatically compressed and converted to WebP</li>
+                        <li>Strict 300KB size limit for performance</li>
+                        <li>Filenames and folders are managed automatically</li>
+                    </ul>
+                </div>
+            ) : (
+                <>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">File Name</label>
+                      <input
+                        type="text"
+                        value={uploadFilename}
+                        onChange={(e) => setUploadFilename(e.target.value)}
+                        className="w-full bg-background border border-input rounded p-2 text-sm text-foreground font-mono focus:border-ring outline-none"
+                        placeholder="e.g. my-beautiful-image"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Destination Directory</label>
+                      <input
+                        type="text"
+                        value={uploadFolder}
+                        onChange={(e) => setUploadFolder(e.target.value)}
+                        className="w-full bg-background border border-input rounded p-2 text-sm text-foreground font-mono focus:border-ring outline-none"
+                        placeholder="images, uploads, assets/blog..."
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        The file will be saved in: /public/{uploadFolder || '(root)'}/{uploadFilename || 'uuid'}.{pendingFile?.name.split('.').pop()}
+                      </p>
+                    </div>
+                </>
+            )}
         </div>
       </Modal>
 
@@ -1050,14 +1090,14 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
        <Modal
         isOpen={showTemplateModal}
         onClose={() => setShowTemplateModal(false)}
-        title="Elige una Plantilla"
-        description={`Selecciona un post existente de la colección "${post.collection}" para usarlo como base.`}
+        title="Choose a Template"
+        description={`Select an existing post from the collection "${post.collection}" to use as a base.`}
         footer={
            <button
              onClick={() => setShowTemplateModal(false)}
              className="w-full text-center text-sm text-muted-foreground hover:text-foreground py-2"
            >
-             Empezar desde cero (sin plantilla)
+             Start from scratch (no template)
            </button>
         }
       >
@@ -1076,13 +1116,13 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                    <div className="flex justify-between items-start gap-4 z-10 relative">
                        <div className="min-w-0">
                             <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                                {p.metadata.title || "Sin título"}
+                                {p.metadata.title || "Untitled"}
                             </h4>
                             <div className="flex items-center gap-2 mt-1">
                                 <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">
                                     {p.filePath}
                                 </span>
-                                {p.status === 'synced' && <span className="w-2 h-2 rounded-full bg-green-500" title="Sincronizado"/>}
+                                {p.status === 'synced' && <span className="w-2 h-2 rounded-full bg-green-500" title="Synced"/>}
                             </div>
                        </div>
                        <div className="text-xs text-muted-foreground whitespace-nowrap">
@@ -1098,14 +1138,14 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       <Modal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
-        title="Importar Metadatos"
-        description="Selecciona un post existente para copiar sus metadatos al post actual."
+        title="Import Metadata"
+        description="Select an existing post to copy its metadata to the current post."
         footer={
            <button
              onClick={() => setShowImportModal(false)}
              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
            >
-             Cancelar
+             Cancel
            </button>
         }
       >
@@ -1113,20 +1153,20 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
            {/* Search */}
            <input
              type="text"
-             placeholder="Buscar posts..."
+             placeholder="Search posts..."
              value={searchTerm}
              onChange={(e) => setSearchTerm(e.target.value)}
              className="w-full bg-background border border-input rounded p-2 text-sm text-foreground focus:border-ring outline-none"
            />
-           
+
            {/* List */}
            <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
              {loadingPosts ? (
-               <div className="text-center py-4 text-muted-foreground">Cargando posts...</div>
+               <div className="text-center py-4 text-muted-foreground">Loading posts...</div>
              ) : (
                importablePosts
-                  .filter(p => 
-                    (p.metadata.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                  .filter(p =>
+                    (p.metadata.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                      p.filePath.toLowerCase().includes(searchTerm.toLowerCase()))
                   )
                   .map(post => (
@@ -1136,7 +1176,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                    className="w-full text-left p-3 rounded bg-card border border-border hover:border-ring hover:bg-muted transition-all group"
                  >
                    <div className="font-medium text-foreground group-hover:text-primary transition-colors">
-                     {post.metadata.title || "Sin título"}
+                     {post.metadata.title || "Untitled"}
                    </div>
                    <div className="text-xs text-muted-foreground font-mono truncate">
                      {post.filePath}
@@ -1145,111 +1185,122 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                ))
              )}
              {!loadingPosts && importablePosts.length > 0 && importablePosts.filter(p => p.metadata.title?.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
-                <div className="text-center py-4 text-muted-foreground">No se encontraron posts</div>
+                <div className="text-center py-4 text-muted-foreground">No posts found</div>
              )}
              {!loadingPosts && importablePosts.length === 0 && (
-               <div className="text-center py-4 text-muted-foreground">No hay otros posts disponibles</div>
+               <div className="text-center py-4 text-muted-foreground">No other posts available</div>
              )}
            </div>
         </div>
       </Modal>
-      <Modal
-        isOpen={showConflictError}
-        onClose={() => setShowConflictError(false)}
-        title="⚠️ Conflicto Detectado"
-        description="El archivo ha sido modificado externamente (probablemente en GitHub). Tus cambios no pueden guardarse automáticamente."
-        footer={
-          <button
-            onClick={() => {
-              setShowConflictError(false);
-              router.refresh();
-            }}
-            className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-md transition-colors"
-          >
-            Refrescar y perder mis cambios
-          </button>
-        }
-      >
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-3 mb-4 text-sm text-yellow-200">
-          Recomendación: Copia tu contenido actual localmente antes de refrescar.
+      {/* Conflict Modal */}
+      {showConflictError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="bg-destructive/10 border border-destructive p-6 rounded-lg max-w-md shadow-lg">
+            <h3 className="text-lg font-bold text-destructive mb-2 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                ⚠️ Conflict Detected
+            </h3>
+            <p className="text-sm text-foreground mb-4">
+              The file has been modified externally (probably on GitHub). Your changes cannot be saved automatically.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 text-sm font-medium"
+              >
+                Refresh and lose my changes
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4 italic">
+                Recommendation: Copy your current content locally before refreshing.
+            </p>
+          </div>
         </div>
-      </Modal>
-
+      )}
       <Modal
         isOpen={showPermissionError}
         onClose={() => setShowPermissionError(false)}
-        title="❌ Error de Permisos"
-        description="Tu aplicación no tiene permisos de escritura en este repositorio."
+        title="❌ Permission Error"
+        description="Your application does not have write permissions to this repository."
         footer={
           <button
             onClick={() => setShowPermissionError(false)}
             className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-md transition-colors"
           >
-            Entendido
+            Understood
           </button>
         }
       >
         <div className="space-y-3 text-sm text-muted-foreground">
-          <p>Tu GitHub OAuth App no tiene permisos para hacer commits.</p>
+          <p>Your GitHub OAuth App does not have permissions to make commits.</p>
           <div className="bg-muted p-3 rounded border border-border">
-            <h4 className="font-semibold text-foreground mb-1">Solución:</h4>
+            <h4 className="font-semibold text-foreground mb-1">Solution:</h4>
             <ol className="list-decimal list-inside space-y-1">
-              <li>Ve a Settings &gt; Developer Settings en GitHub</li>
-              <li>Crea una <strong>GitHub App</strong> (no OAuth App)</li>
-              <li>Dale permisos de <code>Contents: Read & Write</code></li>
-              <li>Actualiza las credenciales en <code>.env.local</code></li>
+              <li>Go to Settings &gt; Developer Settings on GitHub</li>
+              <li>Create a <strong>GitHub App</strong> (not OAuth App)</li>
+              <li>Give it <code>Contents: Read & Write</code> permissions</li>
+              <li>Update credentials in <code>.env.local</code></li>
             </ol>
           </div>
-          <p>Consulta <code>GITHUB_PERMISSIONS.md</code> para más detalles.</p>
+          <p>See <code>GITHUB_PERMISSIONS.md</code> for more details.</p>
         </div>
       </Modal>
 
       <Modal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        title="Eliminar Post"
-        description="¿Estás seguro de que quieres eliminar este post? Esta acción no se puede deshacer."
+        title="Delete Post"
+        description="Are you sure you want to delete this post? This action cannot be undone."
         footer={
-           <div className="flex justify-end gap-2">
-             <button
-               onClick={() => setShowDeleteConfirm(false)}
-               className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
-               disabled={deleting}
-             >
-               Cancelar
-             </button>
-             <button
-               onClick={handleDelete}
-               disabled={deleting}
-               className="px-4 py-2 text-sm bg-destructive text-destructive-foreground rounded font-medium hover:bg-destructive/90 disabled:opacity-50"
-             >
-               {deleting ? "Eliminando..." : "Sí, Eliminar"}
-             </button>
+           <div className="flex justify-end gap-3 w-full">
+                <button 
+                    onClick={() => setShowDeleteConfirm(false)} 
+                    className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded"
+                >
+                    Cancel
+                </button>
+                <button 
+                    onClick={handleDelete} 
+                    disabled={deleting}
+                    className="px-4 py-2 text-sm bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 flex items-center gap-2"
+                >
+                    {deleting ? "Deleting..." : "Yes, Delete"}
+                </button>
            </div>
         }
       >
-         <div className="space-y-4">
-           {post.sha && (
-            <div className="flex items-start gap-3 p-3 bg-card border border-border rounded-md">
-                <input
-                  type="checkbox"
-                  id="deleteFromGithub"
-                  checked={deleteFromGitHub}
-                  onChange={(e) => setDeleteFromGitHub(e.target.checked)}
-                  className="mt-1 w-4 h-4 bg-background border-input rounded focus:ring-destructive text-destructive"
-                />
-                <label htmlFor="deleteFromGithub" className="text-sm text-muted-foreground cursor-pointer select-none">
-                   <strong className="text-foreground">También eliminar de GitHub</strong>
-                   <p className="text-muted-foreground/80 text-xs mt-1">
-                      Esto eliminará el archivo <code>{post.filePath}</code> del repositorio remoto.
-                   </p>
-                </label>
+        <div className="space-y-4">
+            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded border border-input">
+                 {post.status === 'synced' ? (
+                     <>
+                        <input 
+                            type="checkbox" 
+                            id="deleteGithub" 
+                            className="bg-background"
+                            checked={deleteFromGitHub}
+                            onChange={(e) => setDeleteFromGitHub(e.target.checked)}
+                        />
+                        <label htmlFor="deleteGithub" className="text-sm cursor-pointer select-none">
+                            Also delete from GitHub
+                        </label>
+                     </>
+                 ) : (
+                     <p className="text-xs text-muted-foreground">Post not synced. Local delete only.</p>
+                 )}
             </div>
-           )}
-           <div className="text-sm text-muted-foreground">
-              El post se eliminará permanentemente de la base de datos local.
-           </div>
-         </div>
+            {deleteFromGitHub && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    This will delete the file <code className="bg-destructive/10 px-1 rounded">{post.filePath}</code> from the remote repository.
+                </p>
+            )}
+            {!deleteFromGitHub && (
+                <p className="text-xs text-muted-foreground">
+                    The post will be permanently deleted from the local database.
+                </p>
+            )}
+        </div>
       </Modal>
 
       {/* AI Assistant Modal */}
@@ -1261,8 +1312,8 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                 setAiPreview(null);
             }
         }}
-        title="Asistente de IA (Gemini 2.0)"
-        description={aiPreview ? "Valida el contenido generado antes de aplicarlo al post." : "Describe qué tipo de post quieres generar. La IA completará los metadatos y el contenido automáticamente."}
+        title="AI Assistant (Gemini 2.0)"
+        description={aiPreview ? "Validate the generated content before applying it to the post." : "Describe what type of post you want to generate. The AI will complete metadata and content automatically."}
         footer={
            <div className="flex justify-end gap-2">
              <button
@@ -1270,7 +1321,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
                disabled={isGenerating}
              >
-               {aiPreview ? "Descartar" : "Cancelar"}
+               {aiPreview ? "Discard" : "Cancel"}
              </button>
              
              {aiPreview ? (
@@ -1281,7 +1332,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    Aplicar Cambios
+                    Apply Changes
                 </button>
              ) : (
                 <button
@@ -1295,14 +1346,14 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Generando...
+                    Generating...
                     </>
                 ) : (
                     <>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
-                    Generar Post
+                    Generate Post
                     </>
                 )}
                 </button>
@@ -1315,7 +1366,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
              <>
                 {/* Referencia Selector */}
                 <div className="space-y-2">
-                    <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider">Esquema de Referencia</label>
+                    <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider">Reference Schema</label>
                     {!referencePost ? (
                         <button 
                             onClick={() => { setShowRefSelector(true); loadImportablePosts(); }}
@@ -1325,7 +1376,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                                 <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
                                 </svg>
-                                Seleccionar post de referencia...
+                                Select reference post...
                             </span>
                             <svg className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -1341,13 +1392,13 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                                 </div>
                                 <div className="overflow-hidden">
                                     <p className="text-sm font-medium text-foreground truncate">{referencePost.metadata.title || referencePost.filePath}</p>
-                                    <p className="text-[10px] text-indigo-400 font-mono uppercase">Usando este esquema ({Object.keys(referencePost.metadata).length} campos)</p>
+                                    <p className="text-[10px] text-indigo-400 font-mono uppercase">Using this schema ({Object.keys(referencePost.metadata).length} fields)</p>
                                 </div>
                             </div>
                             <button 
                                 onClick={() => setReferencePost(null)}
                                 className="p-1 hover:text-destructive transition-colors"
-                                title="Quitar referencia"
+                                title="Remove reference"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1358,11 +1409,11 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                 </div>
 
                 <div>
-                    <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Instrucciones para la IA</label>
+                    <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Instructions for AI</label>
                     <textarea
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="Escribe un post sobre las ventajas de usar Next.js 15 en producción..."
+                    placeholder="Write a post about the advantages of using Next.js 15 in production..."
                     className="w-full h-32 bg-background border border-input rounded p-3 text-sm text-foreground focus:border-indigo-500 outline-none resize-none"
                     />
                 </div>
@@ -1370,13 +1421,13 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
            ) : (
              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                 <div className="space-y-2">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Metadatos Generados</h4>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Generated Metadata</h4>
                     <pre className="text-[11px] bg-muted/50 p-3 rounded border border-border overflow-x-auto font-mono">
                         {JSON.stringify(aiPreview.metadata, null, 2)}
                     </pre>
                 </div>
                 <div className="space-y-2">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vista Previa del Contenido</h4>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Content Preview</h4>
                     <div className="bg-background border border-border rounded p-4 text-xs prose dark:prose-invert max-w-none max-h-48 overflow-y-auto">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {aiPreview.content}
@@ -1388,7 +1439,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    Al aplicar, se sobrescribirán los campos actuales con estos nuevos valores.
+                    Applying will overwrite current fields with these new values.
                     </p>
                 </div>
              </div>
@@ -1396,25 +1447,25 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
         </div>
       </Modal>
 
-      {/* Reference Post Selector Modal */}
+      {/* Reference Selector Modal */}
       <Modal
         isOpen={showRefSelector}
         onClose={() => setShowRefSelector(false)}
-        title="Seleccionar Post como Esquema"
-        description={`Cargando posts de la colección '${post.collection}' para usar sus campos como referencia.`}
+        title="Select Post as Schema"
+        description={`Loading posts from collection '${post.collection}' to use their fields as reference.`}
         footer={
            <button
              onClick={() => setShowRefSelector(false)}
              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
            >
-             Cancelar
+             Cancel
            </button>
         }
       >
         <div className="space-y-4">
            <input
              type="text"
-             placeholder="Filtrar por título o archivo..."
+             placeholder="Filter by title or file..."
              value={searchTerm}
              onChange={(e) => setSearchTerm(e.target.value)}
              className="w-full bg-background border border-input rounded p-2 text-sm text-foreground focus:border-indigo-500 outline-none"
@@ -1424,12 +1475,12 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
              {loadingPosts ? (
                <div className="text-center py-8">
                   <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-xs text-muted-foreground">Buscando posts en el repositorio...</p>
+                  <p className="text-xs text-muted-foreground">Searching posts in the repository...</p>
                </div>
              ) : (
                importablePosts
                   .filter(p => 
-                    p.collection === post.collection && // Misma colección
+                    p.collection === post.collection && // Same collection
                     (p.metadata.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                      p.filePath.toLowerCase().includes(searchTerm.toLowerCase()))
                   )
@@ -1443,11 +1494,11 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                     className="w-full text-left p-3 rounded bg-card border border-border hover:border-indigo-500/50 hover:bg-muted transition-all group"
                   >
                     <div className="font-medium text-foreground group-hover:text-indigo-500 transition-colors">
-                      {p.metadata.title || "Sin título"}
+                      {p.metadata.title || "Untitled"}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-mono">
-                            {Object.keys(p.metadata).length} campos
+                            {Object.keys(p.metadata).length} fields
                         </span>
                         <span className="text-[10px] text-muted-foreground font-mono truncate">
                             {p.filePath.split('/').pop()}
@@ -1458,7 +1509,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
              )}
               {!loadingPosts && importablePosts.filter(p => p.collection === post.collection).length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                    <p>No se encontraron posts en esta colección.</p>
+                    <p>No posts found in this collection.</p>
                 </div>
               )}
            </div>

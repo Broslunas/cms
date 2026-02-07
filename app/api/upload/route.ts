@@ -16,6 +16,7 @@ export async function POST(req: Request) {
     const repoId = searchParams.get("repoId");
     const folder = searchParams.get("folder") || "";
     const customName = searchParams.get("filename") || "";
+    const useDefault = searchParams.get("useDefault") === "true";
 
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const { s3Client, bucket, publicUrl, endpoint, isLimited } = await getS3Client(session.user.id, repoId || undefined);
+    const { s3Client, bucket, publicUrl, endpoint, isLimited } = await getS3Client(session.user.id, repoId || undefined, useDefault);
 
     let buffer = Buffer.from(await file.arrayBuffer());
     let contentType = file.type;

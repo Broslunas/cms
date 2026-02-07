@@ -8,6 +8,7 @@ import { SocialLinksEditor } from "../SocialLinksEditor";
 import { Switch } from "../ui/switch";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Sparkles, Wand2, X } from "lucide-react";
 
 // Función para convertir rutas relativas a URLs de GitHub raw
 const convertToGitHubRawUrl = (src: string, repoId?: string): string => {
@@ -66,74 +67,88 @@ export function MetadataField({
     const key = fieldKey;
     const [isGenerating, setIsGenerating] = useState(false);
 
-    const handleAutoSeo = async () => {
+
+    const handleAiGenerate = async () => {
         if (!content || content.length < 50) {
-            toast.warning("El contenido es muy corto para generar SEO.");
+            toast.warning("Content is too short to generate AI suggestions.");
             return;
         }
 
         setIsGenerating(true);
-        const toastId = toast.loading("Generando SEO...");
 
-        try {
-            const res = await fetch("/api/ai/process", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    type: "seo",
-                    context: content
-                })
-            });
-
-            if (!res.ok) throw new Error("Error en la respuesta");
-            const data = await res.json();
-            
-            if (data.title) onUpdate('title', data.title);
-            if (data.description) onUpdate('description', data.description);
-
-            toast.success("SEO Generado", { id: toastId });
-        } catch (error) {
-            console.error(error);
-            toast.error("Error al generar SEO", { id: toastId });
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    const handleAutoTags = async () => {
-        if (!content || content.length < 50) {
-            toast.warning("El contenido es muy corto para generar tags.");
-            return;
-        }
-
-        setIsGenerating(true);
-        const toastId = toast.loading("Generando tags...");
-
-        try {
-            const res = await fetch("/api/ai/process", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    type: "tags",
-                    context: content
-                })
-            });
-
-            if (!res.ok) throw new Error("Error en la respuesta");
-            const data = await res.json();
-            
-            if (data.tags && Array.isArray(data.tags)) {
-                onUpdate('tags', data.tags);
-                toast.success("Tags generados", { id: toastId });
-            } else {
-                throw new Error("Formato inválido");
+        if (fieldKey === 'seo' || fieldKey === 'title' || fieldKey === 'description') {
+            const loadingId = toast.loading(`Generating ${fieldKey === 'seo' ? 'SEO' : fieldKey}...`);
+            try {
+                const res = await fetch("/api/ai/process", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ type: "seo", context: content }),
+                });
+                if (!res.ok) throw new Error("Error generating SEO");
+                const data = await res.json();
+                
+                if (fieldKey === 'title') {
+                     const apiTitle = data.title || data.Title || data.TITLE;
+                     if (apiTitle && typeof apiTitle === 'string') {
+                        onUpdate('title', apiTitle);
+                        toast.success("Title generated!", { id: loadingId });
+                     } else {
+                        throw new Error(`Invalid title generated. Received: ${JSON.stringify(data)}`);
+                     }
+                } else if (fieldKey === 'description') {
+                     const apiDesc = data.description || data.Description || data.DESCRIPTION;
+                     if (apiDesc && typeof apiDesc === 'string') {
+                        onUpdate('description', apiDesc);
+                        toast.success("Description generated!", { id: loadingId });
+                     } else {
+                        throw new Error(`Invalid description generated. Received: ${JSON.stringify(data)}`);
+                     }
+                } else {
+                     let updated = false;
+                     const apiTitle = data.title || data.Title || data.TITLE;
+                     if (apiTitle && typeof apiTitle === 'string') {
+                        onUpdate('title', apiTitle);
+                        updated = true;
+                     }
+                     const apiDesc = data.description || data.Description || data.DESCRIPTION;
+                     if (apiDesc && typeof apiDesc === 'string') {
+                        onUpdate('description', apiDesc);
+                        updated = true;
+                     }
+                     
+                     if (updated) {
+                        toast.success("SEO generated!", { id: loadingId });
+                     } else {
+                        throw new Error(`No valid SEO data generated. Received: ${JSON.stringify(data)}`);
+                     }
+                }
+            } catch (error: any) {
+                console.error(error);
+                toast.error(error.message || "Error generating SEO", { id: loadingId });
             }
-        } catch (error) {
-            console.error(error);
-            toast.error("Error al generar tags", { id: toastId });
-        } finally {
-            setIsGenerating(false);
+        } else if (fieldKey === 'tags') {
+            const loadingId = toast.loading("Generating tags...");
+            try {
+                const res = await fetch("/api/ai/process", { // Changed to /api/ai/process as per original structure
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ type: "tags", context: content }),
+                });
+                if (!res.ok) throw new Error("Error generating tags");
+                const data = await res.json();
+                
+                if (data.tags && Array.isArray(data.tags)) {
+                    onUpdate('tags', data.tags);
+                    toast.success("Tags generated!", { id: loadingId });
+                } else {
+                    throw new Error("Invalid format");
+                }
+            } catch (error) {
+                console.error(error);
+                toast.error("Error generating tags", { id: loadingId });
+            }
         }
+        setIsGenerating(false);
     };
 
     // --- Special Components ---
@@ -142,9 +157,9 @@ export function MetadataField({
             <div key={key}>
                 <div className="flex items-center justify-between mb-2">
                     <label className="text-sm font-medium text-foreground capitalize">
-                    {key} <span className="text-xs text-muted-foreground font-normal">(Redes Sociales)</span>
+                    {key} <span className="text-xs text-muted-foreground font-normal">(Social Networks)</span>
                     </label>
-                    <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Eliminar campo ${key}`}>
+                    <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Delete field ${key}`}>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -172,7 +187,7 @@ export function MetadataField({
              <div key={key}>
                 <div className="flex items-center justify-between mb-2">
                     <label className="text-sm font-medium text-foreground capitalize">{key}</label>
-                    <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Eliminar campo ${key}`}>
+                    <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Delete field ${key}`}>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                 </div>
@@ -190,7 +205,7 @@ export function MetadataField({
            <div key={key}>
               <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-foreground capitalize">{key}</label>
-                  <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Eliminar campo ${key}`}>
+                  <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Delete field ${key}`}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
               </div>
@@ -207,7 +222,7 @@ export function MetadataField({
           <div key={key}>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium text-foreground capitalize">{key}</label>
-              <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Eliminar campo ${key}`}>
+              <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Delete field ${key}`}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
               </button>
             </div>
@@ -232,18 +247,18 @@ export function MetadataField({
         <div key={key}>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-medium text-foreground capitalize flex items-center gap-2">
-              {key} <span className="text-muted-foreground text-xs font-normal">(separados por coma)</span>
+              {key} <span className="text-muted-foreground text-xs font-normal">(comma separated)</span>
               {(key === 'tags' || key === 'categories') && (
                   <button 
-                    onClick={handleAutoTags} 
+                    onClick={handleAiGenerate} 
                     disabled={isGenerating}
                     className="text-xs flex items-center gap-1 bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 px-2 py-0.5 rounded transition-colors disabled:opacity-50"
                   >
-                    {isGenerating ? <div className="animate-spin w-3 h-3 border border-current rounded-full border-t-transparent" /> : <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+                    {isGenerating ? <div className="animate-spin w-3 h-3 border border-current rounded-full border-t-transparent" /> : <><Sparkles className="w-3 h-3" /> Generate</>}
                   </button>
               )}
             </label>
-            <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Eliminar campo ${key}`}>
+            <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Delete field ${key}`}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </button>
           </div>
@@ -270,8 +285,8 @@ export function MetadataField({
             return (
                 <div key={key}>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-foreground capitalize">{key} <span className="text-muted-foreground text-xs font-normal">(Fecha)</span></label>
-                    <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Eliminar campo ${key}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                    <label className="text-sm font-medium text-foreground capitalize">{key} <span className="text-muted-foreground text-xs font-normal">(Date)</span></label>
+                    <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Delete field ${key}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                   </div>
                   <input type="datetime-local" value={localISOTime} onChange={(e) => { const newDate = new Date(e.target.value); onUpdate(key, newDate.toISOString()); }} className="w-full px-3 py-2 bg-background border border-input rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm [color-scheme:dark]" />
                   <p className="text-xs text-muted-foreground mt-1 font-mono">{trimmedValue}</p>
@@ -281,39 +296,52 @@ export function MetadataField({
       }
 
       const isImage = trimmedValue.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif|tiff|tif)(\?.*)?$/i) || ((trimmedValue.startsWith("http") || trimmedValue.startsWith("/")) && (key.toLowerCase().includes("image") || key.toLowerCase().includes("img") || key.toLowerCase().includes("cover") || key.toLowerCase().includes("avatar") || key.toLowerCase().includes("thumbnail") || key.toLowerCase().includes("banner") || key.toLowerCase().includes("poster") || key.toLowerCase().includes("logo") || key.toLowerCase().includes("icon") || key.toLowerCase().includes("bg")));
+      const isSuggested = suggestedFields[fieldKey] !== undefined; // Check if field is suggested
 
       return (
         <div key={key}>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-medium text-foreground capitalize flex items-center gap-2">
-                {key}
-                {(key === 'title' || key === 'description') && (
+                {fieldKey === 'seo' ? 'SEO Settings' : 
+                 fieldKey === 'ogImage' ? 'Social Share Image' :
+                 fieldKey.replace(/([A-Z])/g, ' $1').trim()}
+                 
+                 {(fieldKey === 'title' || fieldKey === 'description') && (
                     <button 
-                        onClick={handleAutoSeo} 
+                        onClick={handleAiGenerate} 
                         disabled={isGenerating}
                         className="text-xs flex items-center gap-1 bg-indigo-500/10 text-indigo-500 hover:text-indigo-600 px-2 py-0.5 rounded transition-colors disabled:opacity-50"
                     >
-                        {isGenerating ? <div className="animate-spin w-3 h-3 border border-current rounded-full border-t-transparent" /> : <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+                        {isGenerating ? <div className="animate-spin w-3 h-3 border border-current rounded-full border-t-transparent" /> : <><Wand2 className="w-3 h-3" /> Generate</>}
                     </button>
                 )}
+
             </label>
-            <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Eliminar campo ${key}`}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            </button>
+            <div className="flex items-center gap-2">
+                <button 
+                onClick={() => onDelete(fieldKey)}
+                className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                title="Delete field"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+            </div>
           </div>
           <div className="space-y-3">
             <div className="flex gap-2">
               <input type="text" value={value} onChange={(e) => onUpdate(key, e.target.value)} className="flex-1 px-3 py-2 bg-background border border-input rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
-              <button type="button" onClick={() => triggerUpload({ type: 'metadata', key })} className="px-3 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors flex items-center gap-2 border border-border" title="Subir imagen">
-                {isUploading && uploadTarget.key === key ? <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" /> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>} <span className="hidden sm:inline">Subir</span>
-              </button>
+              {isImage && (
+                <button type="button" onClick={() => triggerUpload({ type: 'metadata', key })} className="px-3 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors flex items-center gap-2 border border-border" title="Upload image">
+                  {isUploading && uploadTarget.key === key ? <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" /> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>} <span className="hidden sm:inline">Upload</span>
+                </button>
+              )}
             </div>
             {isImage && trimmedValue.length > 0 && (
               <div className="relative group w-fit">
                 <div className="rounded-lg overflow-hidden border border-border bg-muted/50 max-w-xs">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img key={trimmedValue} src={convertToGitHubRawUrl(trimmedValue, repoId)} alt={`Preview of ${key}`} className="max-h-48 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }} />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none"><span className="text-xs text-white bg-black/70 px-2 py-1 rounded">Vista Previa</span></div>
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none"><span className="text-xs text-white bg-black/70 px-2 py-1 rounded">Preview</span></div>
                 </div>
               </div>
             )}
@@ -341,7 +369,7 @@ export function MetadataField({
                 <button 
                     onClick={() => onDelete(key)} 
                     className="text-muted-foreground hover:text-destructive transition-colors p-2 hover:bg-destructive/10 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100"
-                    title={`Eliminar campo ${key}`}
+                    title={`Delete field ${key}`}
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

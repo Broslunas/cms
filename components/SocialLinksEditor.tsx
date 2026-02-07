@@ -89,7 +89,7 @@ export function SocialLinksEditor({ value, onChange, allowedNetworks }: SocialLi
     <div className="bg-muted/30 border border-border rounded-lg overflow-hidden">
         <div className="p-3 space-y-3">
             {existingKeys.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-2">No hay redes sociales añadidas.</p>
+                <p className="text-xs text-muted-foreground text-center py-2">No social networks added.</p>
             )}
             
             {existingKeys.map((key) => (
@@ -102,14 +102,14 @@ export function SocialLinksEditor({ value, onChange, allowedNetworks }: SocialLi
                             type="text"
                             value={cleanValue[key]}
                             onChange={(e) => handleChange(key, e.target.value)}
-                            placeholder={`URL de ${getNetworkLabel(key)}`}
+                            placeholder={`${getNetworkLabel(key)} URL`}
                             className="w-full bg-background border border-input rounded px-3 py-1.5 text-sm focus:border-ring focus:outline-none"
                         />
                     </div>
                     <button
                         onClick={() => handleDelete(key)}
                         className="text-muted-foreground hover:text-destructive p-1 rounded hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
-                        title="Eliminar"
+                        title="Delete"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
@@ -140,7 +140,7 @@ export function SocialLinksEditor({ value, onChange, allowedNetworks }: SocialLi
                         onClick={() => setIsAdding(true)}
                         className="flex items-center gap-1.5 px-2 py-1 text-xs bg-muted/50 border border-dashed border-border rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
                     >
-                        + Otro
+                        + Other
                     </button>
                 )}
                 </>
@@ -150,7 +150,7 @@ export function SocialLinksEditor({ value, onChange, allowedNetworks }: SocialLi
                         type="text"
                         value={newNetwork}
                         onChange={(e) => setNewNetwork(e.target.value)}
-                        placeholder="Nombre de la red (ej: tiktok)"
+                        placeholder="Network name (e.g. tiktok)"
                         className="flex-1 bg-background border border-input rounded px-2 py-1 text-xs focus:outline-none"
                         autoFocus
                         onKeyDown={(e) => {
@@ -158,8 +158,8 @@ export function SocialLinksEditor({ value, onChange, allowedNetworks }: SocialLi
                              if (e.key === 'Escape') setIsAdding(false);
                         }}
                     />
-                    <button onClick={handleAddCustom} className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">Añadir</button>
-                    <button onClick={() => setIsAdding(false)} className="text-xs text-muted-foreground px-2 py-1 hover:text-foreground">Cancelar</button>
+                    <button onClick={handleAddCustom} className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">Add</button>
+                    <button onClick={() => setIsAdding(false)} className="text-xs text-muted-foreground px-2 py-1 hover:text-foreground">Cancel</button>
                 </div>
             )}
         </div>
