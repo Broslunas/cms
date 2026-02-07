@@ -12,20 +12,16 @@ export function parseMarkdown(rawContent: string) {
  * Serializa metadata y contenido de vuelta a formato Markdown
  */
 export function serializeMarkdown(metadata: Record<string, any>, content: string) {
-  // Configurar las opciones de opciones de dump de js-yaml a través de gray-matter
-  // para forzar el estilo "flow" (inline) en los arrays.
-  // forceQuotes puede ser útil pero no es estrictamente lo pedido.
-  const options = {
-    // Estas opciones se pasan a js-yaml.dump
-    // flowLevel: -1 (default, block), 0, 1 etc.
-    // Un valor de 2 o 3 suele forzar arrays simples a ser inline si son cortos.
-    // Sin embargo, js-yaml a veces es caprichoso.
-    // 'styles': { '!!seq': 'flow' } podría funcionar en versiones viejas.
-  };
+  // Serializar usando gray-matter
+  const stringified = matter.stringify(content, metadata);
 
-  // Hack temporal: gray-matter con js-yaml a veces no expone bien el estilo flow específico por tipo.
-  // Pero podemos intentar pasar flowLevel.
-  return matter.stringify(content, metadata);
+  // Post-procesar para quitar comillas a fechas con formato "YYYY-MM-DD"
+  // Solo lo hacemos en el bloque de frontmatter para evitar tocar el contenido.
+  // El frontmatter está delimitado por ---
+  return stringified.replace(/^---([\s\S]*?)\n---/m, (match, frontmatter) => {
+    const cleanFrontmatter = frontmatter.replace(/([:-]\s*)["'](\d{4}-\d{2}-\d{2})["']/g, '$1$2');
+    return `---${cleanFrontmatter}\n---`;
+  });
 }
 
 /**
