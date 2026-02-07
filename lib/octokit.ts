@@ -1,4 +1,5 @@
 import { Octokit } from "@octokit/rest";
+import { getAppOctokit } from "@/lib/github-app-auth";
 
 // Caché en memoria para verificaciones de Astro (evita llamadas repetidas)
 const astroRepoCache = new Map<string, boolean>();
@@ -221,6 +222,11 @@ export async function listContentFiles(
   }
 }
 
+const COMMIT_AUTHOR = {
+  name: "Broslunas CMS",
+  email: "cms@broslunas.com"
+};
+
 /**
  * Actualiza o crea un archivo en el repositorio
  */
@@ -233,16 +239,25 @@ export async function updateFile(
   message: string,
   sha?: string
 ) {
-  const octokit = getOctokit(accessToken);
+  const appOctokit = await getAppOctokit(owner, repo);
+  const octokit = appOctokit || getOctokit(accessToken);
 
-  const { data } = await octokit.repos.createOrUpdateFileContents({
+  const requestBody: any = {
     owner,
     repo,
     path,
     message,
     content: Buffer.from(content).toString("base64"),
     sha, // Si existe, actualiza; si no, crea
-  });
+  };
+
+  // Only force author if NOT using the App (App auth defaults to Bot user with correct avatar)
+  if (!appOctokit) {
+      requestBody.author = COMMIT_AUTHOR;
+      requestBody.committer = COMMIT_AUTHOR;
+  }
+
+  const { data } = await octokit.repos.createOrUpdateFileContents(requestBody);
 
   return {
     sha: data.content?.sha,
@@ -261,15 +276,23 @@ export async function deleteFile(
   sha: string,
   message: string
 ) {
-  const octokit = getOctokit(accessToken);
+  const appOctokit = await getAppOctokit(owner, repo);
+  const octokit = appOctokit || getOctokit(accessToken);
 
-  const { data } = await octokit.repos.deleteFile({
+  const requestBody: any = {
     owner,
     repo,
     path,
     message,
     sha,
-  });
+  };
+
+  if (!appOctokit) {
+      requestBody.author = COMMIT_AUTHOR;
+      requestBody.committer = COMMIT_AUTHOR;
+  }
+
+  const { data } = await octokit.repos.deleteFile(requestBody);
 
   return data;
 }

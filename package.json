@@ -14,6 +14,7 @@
     "@aws-sdk/s3-request-presigner": "^3.984.0",
     "@deepgram/sdk": "^4.11.3",
     "@google/generative-ai": "^0.24.1",
+    "@octokit/auth-app": "^8.2.0",
     "@octokit/rest": "^22.0.1",
     "@radix-ui/react-context-menu": "^2.2.16",
     "@radix-ui/react-scroll-area": "^1.2.10",
