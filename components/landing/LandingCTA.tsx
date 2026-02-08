@@ -5,8 +5,14 @@ import { signIn } from "next-auth/react";
 import { Link } from "next-view-transitions";
 import { Button } from "@/components/ui/button";
 import { Rocket } from "lucide-react";
+import { useGitHubLogin } from "@/hooks/use-github-login";
 
 export function LandingCTA({ isLoggedIn }: { isLoggedIn: boolean }) {
+  const { openLoginPopup } = useGitHubLogin();
+
+
+
+
   return (
     <section className="py-32 relative text-center overflow-hidden">
       {/* Background with animated gradient */}
@@ -36,11 +42,13 @@ export function LandingCTA({ isLoggedIn }: { isLoggedIn: boolean }) {
                 </Button>
               </Link>
             ) : (
-               <div onClick={() => signIn("github", { callbackUrl: "/dashboard" })}>
-                 <Button size="lg" className="h-14 px-10 text-lg rounded-full shadow-xl hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-1 transition-all duration-300 gap-2">
-                   Sign Up with GitHub <Rocket className="w-5 h-5" />
-                 </Button>
-               </div>
+                <Button 
+                  size="lg" 
+                  className="h-14 px-10 text-lg rounded-full shadow-xl hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-1 transition-all duration-300 gap-2"
+                  onClick={openLoginPopup}
+                >
+                  Sign Up with GitHub <Rocket className="w-5 h-5" />
+                </Button>
             )}
           </div>
         </motion.div>

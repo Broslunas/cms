@@ -3,6 +3,7 @@ import { auth, signOut } from "@/lib/auth"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Github, LogOut, User, Menu } from "lucide-react"
+import { LoginButtonHeader } from "./LoginButtonHeader"
 
 export async function SiteHeader() {
   const session = await auth()
@@ -66,7 +67,7 @@ export async function SiteHeader() {
              </div>
           ) : (
             <div className="hidden md:block">
-               {/* Login button placeholder or logic */}
+               <LoginButtonHeader />
             </div>
           )}
           <div className="h-6 w-[1px] bg-border mx-1 hidden md:block" />

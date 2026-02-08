@@ -16,7 +16,7 @@ export default async function EditorPage({
   const { repo: repoId, collection } = await searchParams;
 
   if (!session?.user) {
-    redirect("/");
+    redirect("/login");
   }
 
   const client = await clientPromise;

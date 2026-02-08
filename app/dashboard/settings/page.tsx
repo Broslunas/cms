@@ -7,7 +7,7 @@ export default async function SettingsProfilePage() {
   const session = await auth();
 
   if (!session?.user) {
-    redirect("/");
+    redirect("/login");
   }
 
   // Verificar si el usuario tiene la app instalada

@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   const session = await auth();
 
   if (!session?.user || session.error === "RefreshAccessTokenError") {
-    redirect("/");
+    redirect("/login");
   }
 
   // Check if the user has the app installed

@@ -27,7 +27,7 @@ export default async function ReposPage({
   const params = await searchParams;
 
   if (!session?.user || session.error === "RefreshAccessTokenError") {
-    redirect("/");
+    redirect("/login");
   }
 
   const repoId = params.repo;

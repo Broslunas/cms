@@ -11,7 +11,7 @@ export default async function SetupPage() {
   const session = await auth();
 
   if (!session?.user) {
-    redirect("/");
+    redirect("/login");
   }
 
   // If the app is already installed, redirect to the dashboard

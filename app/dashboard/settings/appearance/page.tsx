@@ -7,7 +7,7 @@ export default async function SettingsAppearancePage() {
   const session = await auth();
   
     if (!session?.user || session.error === "RefreshAccessTokenError") {
-      redirect("/");
+      redirect("/login");
     }
   
     // Verificar si el usuario tiene la app instalada

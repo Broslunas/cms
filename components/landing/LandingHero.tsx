@@ -6,8 +6,13 @@ import { Link } from "next-view-transitions";
 import { Button } from "@/components/ui/button";
 import { Github, Rocket, ArrowRight } from "lucide-react";
 import LoginButton from "@/components/LoginButton";
+import { useGitHubLogin } from "@/hooks/use-github-login";
 
 export function LandingHero({ isLoggedIn }: { isLoggedIn: boolean }) {
+  const { openLoginPopup } = useGitHubLogin();
+
+
+
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-background">
       {/* Background Elements */}
@@ -71,11 +76,13 @@ export function LandingHero({ isLoggedIn }: { isLoggedIn: boolean }) {
                </Button>
             </Link>
           ) : (
-             <div onClick={() => signIn("github", { callbackUrl: "/dashboard" })}>
-               <Button size="lg" className="h-14 px-8 text-lg rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-105 transition-all duration-300 gap-2">
-                 <Github className="w-5 h-5" /> Sign in with GitHub
-               </Button>
-             </div>
+             <Button 
+               size="lg" 
+               className="h-14 px-8 text-lg rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-105 transition-all duration-300 gap-2"
+               onClick={openLoginPopup}
+             >
+               <Github className="w-5 h-5" /> Sign in with GitHub
+             </Button>
           )}
           
           <Link href="https://github.com/broslunas/cms" target="_blank">
