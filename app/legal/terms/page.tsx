@@ -13,44 +13,57 @@ export default function TermsPage() {
       
       <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8">
         <section>
-          <h2 className="text-2xl font-semibold mb-4 text-foreground">1. Acceptance of Terms</h2>
+          <h2 className="text-xl font-bold mb-4 text-foreground">1. Introduction</h2>
           <p className="text-muted-foreground leading-relaxed">
-            By accessing and using Broslunas CMS ("the Service"), you accept and agree to be bound by the terms and provisions of this agreement. In addition, when using these particular services, you shall be subject to any posted guidelines or rules applicable to such services.
+            Welcome to Broslunas CMS. By accessing our website and using our services, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mb-4 text-foreground">2. Description of Service</h2>
+          <h2 className="text-xl font-bold mb-4 text-foreground">2. Account Registration & GitHub Integration</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Broslunas CMS is a content management tool for static websites built with Astro. The Service integrates with GitHub to enable content editing. We reserve the right to modify, suspend, or discontinue the Service at any time with reasonable prior notice.
+            To use Broslunas CMS, you must register using your GitHub account. By doing so, you authorize us to access certain information from your GitHub profile as detailed in our Privacy Policy.
+          </p>
+          <p className="text-muted-foreground leading-relaxed mt-2">
+            You are responsible for maintaining the security of your GitHub account. Broslunas CMS is not liable for any loss or damage arising from your failure to protect your account credentials.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mb-4 text-foreground">3. User Conduct</h2>
+          <h2 className="text-xl font-bold mb-4 text-foreground">3. GitHub App Installation</h2>
           <p className="text-muted-foreground leading-relaxed">
-             You are solely responsible for all code, video, images, information, data, text, software, music, sound, graphics, messages, or other materials ("content") that you upload, post, publish, or display via the Service. You agree not to use the Service for any illegal or unauthorized purpose.
+            Full functionality of Broslunas CMS requires the installation of our GitHub App on your repositories. You agree to grant the necessary permissions for the application to function, including read and write access to the repositories you choose to manage.
+          </p>
+          <p className="text-muted-foreground leading-relaxed mt-2">
+            We reserve the right to verify the installation status of the GitHub App and to restrict access to the Service if the App is uninstalled or permissions are revoked.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mb-4 text-foreground">4. Intellectual Property</h2>
+          <h2 className="text-xl font-bold mb-4 text-foreground">4. Use of Service</h2>
           <p className="text-muted-foreground leading-relaxed">
-            The Service and its original content, features, and functionality are and will remain the exclusive property of Broslunas and its licensors. The Service is protected by copyright, trademark, and other laws of both Spain and foreign countries.
+            Broslunas CMS is provided "as is" and is intended for managing content in Astro-based projects. You agree not to misuse the service or attempt to bypass any restrictions. We reserve the right to modify, suspend, or discontinue the Service at any time.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mb-4 text-foreground">5. Limitation of Liability</h2>
+           <h2 className="text-xl font-bold mb-4 text-foreground">5. Intellectual Property</h2>
+           <p className="text-muted-foreground leading-relaxed">
+             The Service and its original content (excluding user-generated content hosted on GitHub), features, and functionality are and will remain the exclusive property of Broslunas and its licensors.
+           </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-bold mb-4 text-foreground">6. Limitation of Liability</h2>
           <p className="text-muted-foreground leading-relaxed">
-            In no event shall Broslunas, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the Service.
+            In no event shall Broslunas be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your use of the Service.
           </p>
         </section>
-        
+
         <section>
-          <h2 className="text-2xl font-semibold mb-4 text-foreground">6. Governing Law</h2>
+          <h2 className="text-xl font-bold mb-4 text-foreground">7. Changes to Terms</h2>
           <p className="text-muted-foreground leading-relaxed">
-            These Terms shall be governed and construed in accordance with the laws of Spain, without regard to its conflict of law provisions.
+            We reserve the right to modify these terms at any time. We will provide notice of any significant changes. Your continued use of the Service after such changes constitutes your acceptance of the new Terms.
           </p>
         </section>
       </div>

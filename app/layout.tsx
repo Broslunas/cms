@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { SiteHeader } from "@/components/site-header";
 import { CookieBanner } from "@/components/cookie-banner";
 import { CommandMenu } from "@/components/command-menu";
+import { HeaderWrapper } from "@/components/header-wrapper";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -105,7 +106,9 @@ export default function RootLayout({
                   <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
                 </div>
                 
-                <SiteHeader />
+                <HeaderWrapper>
+                  <SiteHeader />
+                </HeaderWrapper>
                 <div className="flex-1 relative">{children}</div>
                 <CookieBanner />
               </div>

@@ -13,39 +13,38 @@ export default function CookiesPage() {
       
       <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8">
         <section>
-          <h2 className="text-2xl font-semibold mb-4 text-foreground">1. What are cookies?</h2>
+          <h2 className="text-xl font-bold mb-4 text-foreground">1. What are cookies?</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Cookies are small text files that websites you visit place on your computer. They are widely used to make websites work, or work more efficiently, as well as to provide information to the owners of the site.
+            Cookies are small text files that are stored on your device when you visit a website. They help the website function properly and provide information to the site owners.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mb-4 text-foreground">2. How we use cookies</h2>
+          <h2 className="text-xl font-bold mb-4 text-foreground">2. Cookies We Use</h2>
           <p className="text-muted-foreground leading-relaxed mb-4">
-            We use cookies for the following purposes:
+            We use different types of cookies to run our website:
           </p>
-          <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
-            <li><strong className="text-foreground">Essential Cookies:</strong> Necessary for the website to function. They allow us to remember your login preferences and keep your session secure.</li>
-            <li><strong className="text-foreground">Performance Cookies:</strong> Help us understand how visitors interact with the website, collecting and reporting information anonymously.</li>
-            <li><strong className="text-foreground">Functionality Cookies:</strong> Allow the website to remember choices you make (such as your username, language, or the region you are in) and provide enhanced, more personal features.</li>
-          </ul>
+          <div className="space-y-4">
+            <div>
+               <h3 className="font-semibold text-foreground">Essential Cookies</h3>
+               <p className="text-muted-foreground text-sm">
+                 These are necessary for the website to function and cannot be switched off. We use <strong>NextAuth.js</strong> cookies to handle user authentication and session management. Without these, you would not be able to log in.
+               </p>
+            </div>
+            <div>
+               <h3 className="font-semibold text-foreground">Analytics Cookies</h3>
+               <p className="text-muted-foreground text-sm">
+                 We use <strong>Google Analytics 4 (GA4)</strong> to understand how visitors interact with our website. These cookies (such as <code>_ga</code> and <code>_gid</code>) collect information anonymously, including the number of visitors and pages visited. This helps us improve our service.
+               </p>
+            </div>
+          </div>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mb-4 text-foreground">3. Cookie Management</h2>
+          <h2 className="text-xl font-bold mb-4 text-foreground">3. Managing Cookies</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Most web browsers allow you to control cookies through their settings preferences. However, if you limit the ability of websites to set cookies, you may worsen your overall user experience, as it will no longer be personalized to you. It may also stop you from saving customized settings like login information.
+            You can control and/or delete cookies as you wish using your browser settings. You can delete all cookies that are already on your computer and you can set most browsers to prevent them from being placed. However, if you do this, you may have to manually adjust some preferences every time you visit a site and some services and functionalities (like logging in) may not work.
           </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-semibold mb-4 text-foreground">4. Third-Party Cookies</h2>
-          <p className="text-muted-foreground leading-relaxed">
-            In some special cases, we also use cookies provided by trusted third parties. The following site details which third-party cookies you might encounter through this site.
-          </p>
-          <ul className="list-disc pl-6 mt-4 space-y-2 text-muted-foreground">
-             <li>This site uses Google Analytics, which is one of the most widespread and trusted analytics solutions on the web for helping us to understand how you use the site and ways that we can improve your experience.</li>
-          </ul>
         </section>
       </div>
     </div>
