@@ -14,6 +14,7 @@ import { DiffViewer } from "./DiffViewer";
 import { EditorHeader } from "./post-editor/EditorHeader";
 import { MetadataEditor } from "./post-editor/MetadataEditor";
 import { ContentEditor } from "./post-editor/ContentEditor";
+import ImageEditorModal from "./post-editor/ImageEditorModal";
 import { Wand2, AlertTriangle, Lock, Sparkles, BookOpen } from "lucide-react";
 
 
@@ -141,6 +142,10 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
   const [isLimitedStorage, setIsLimitedStorage] = useState(false);
   const [uploadStorage, setUploadStorage] = useState<'repo' | 'default'>('repo');
 
+  // Image Editor State
+  const [showImageEditor, setShowImageEditor] = useState(false);
+  const [imageEditorFile, setImageEditorFile] = useState<{file: File, objectUrl: string} | null>(null);
+
   useEffect(() => {
     fetch(`/api/storage/status?repoId=${encodeURIComponent(post.repoId)}`)
       .then(res => res.json())
@@ -241,14 +246,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
     setMetadata({ ...metadata, [key]: value });
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    // Set initial custom filename without extension for easier editing
-    const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.'));
-    setUploadFilename(nameWithoutExt || file.name);
-
+  const startUploadFlow = async (file: File) => {
     if (isLimitedStorage) {
       // Skip modal, show info and upload directly
       toast.info(
@@ -272,8 +270,62 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       setPendingFile(file);
       setShowUploadModal(true);
     }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Set initial custom filename without extension for easier editing
+    const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.'));
+    setUploadFilename(nameWithoutExt || file.name);
+
+    // Provide Image Editor option for images
+    if (file.type.startsWith('image/')) {
+        const objectUrl = URL.createObjectURL(file);
+        setImageEditorFile({ file, objectUrl });
+        setShowImageEditor(true);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+    }
+
+    // Direct upload for non-images
+    await startUploadFlow(file);
     
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleImageEditorSave = async (blob: Blob) => {
+    if (!imageEditorFile) return;
+    
+    // Create a File from the Blob
+    // We want to force PNG extension if cropped, or keep original? 
+    // getCroppedImg returns PNG by default.
+    // Let's use the original name but maybe update extension if needed later.
+    // For now we trust getCroppedImg returns a blob that is compatible.
+    
+    const file = new File([blob], imageEditorFile.file.name, { type: blob.type || 'image/png' });
+    
+    // Cleanup
+    URL.revokeObjectURL(imageEditorFile.objectUrl);
+    setImageEditorFile(null);
+    setShowImageEditor(false);
+    
+    // Proceed
+    await startUploadFlow(file);
+  };
+
+  const handleImageEditorClose = () => {
+      if (imageEditorFile) {
+          URL.revokeObjectURL(imageEditorFile.objectUrl);
+          setImageEditorFile(null);
+      }
+      setShowImageEditor(false);
+      // If cancelled, do we want to upload original or cancel completely?
+      // Usually "Cancel" in editor means "Don't upload".
+      // But maybe user just wanted to crop but decided not to...
+      // Let's assume cancel = cancel everything.
+      if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const confirmUpload = async () => {
@@ -1515,6 +1567,18 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
            </div>
         </div>
       </Modal>
+
+
+      {/* Image Editor Modal */}
+      {showImageEditor && imageEditorFile && (
+          <ImageEditorModal
+            isOpen={showImageEditor}
+            onClose={handleImageEditorClose}
+            imageSrc={imageEditorFile.objectUrl}
+            onSave={handleImageEditorSave}
+            fileName={imageEditorFile.file.name}
+          />
+      )}
 
     </>
   );
