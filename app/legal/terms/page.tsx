@@ -1,3 +1,10 @@
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description: "Read the terms and conditions for using Broslunas CMS.",
+};
+
 export default function TermsPage() {
   return (
     <div className="container mx-auto px-4 py-16 max-w-3xl">

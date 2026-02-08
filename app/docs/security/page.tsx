@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button"
 import { Link } from "next-view-transitions"
 import { ChevronLeft, ShieldCheck, Lock, Fingerprint, EyeOff } from "lucide-react"
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Security & Privacy",
+  description: "Learn how Broslunas CMS handles security, privacy, and data protection.",
+};
 
 export default function SecurityPage() {
   return (

@@ -66,6 +66,9 @@ export function SiteFooter() {
               <li>
                 <Link href="https://astro.build" target="_blank" className="hover:text-primary transition-colors">Astro</Link>
               </li>
+              <li>
+                <Link href="/site-map" className="hover:text-primary transition-colors font-medium">Interactive Sitemap</Link>
+              </li>
             </ul>
           </div>
 

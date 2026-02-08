@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button"
 import { Link } from "next-view-transitions"
 import { ArrowRight, Book, Code2, GitBranch, Layers, Settings, Sparkles, Terminal } from "lucide-react"
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Documentation",
+  description: "Comprehensive guide to using Broslunas CMS. Learn about installation, core concepts, features, and more.",
+};
 
 export default function DocsPage() {
   return (

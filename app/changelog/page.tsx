@@ -1,6 +1,12 @@
 import { Link } from "next-view-transitions";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Rocket, Zap, Bug, GitBranch } from "lucide-react";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Changelog",
+  description: "Stay updated with the latest features, improvements, and bug fixes in Broslunas CMS.",
+};
 
 export default function ChangelogPage() {
   return (

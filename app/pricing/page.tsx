@@ -2,6 +2,12 @@ import { Link } from "next-view-transitions";
 import { Button } from "@/components/ui/button";
 import { SiteFooter } from "@/components/site-footer";
 import { Rocket } from "lucide-react";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Pricing Plans",
+  description: "Check our flexible plans for Broslunas CMS. Currently free during beta.",
+};
 
 export default function PricingPage() {
   return (

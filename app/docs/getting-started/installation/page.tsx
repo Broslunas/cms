@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button"
 import { Link } from "next-view-transitions"
 import { ChevronRight, ChevronLeft, Github, CheckCircle2 } from "lucide-react"
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "GitHub App Installation",
+  description: "Securely connect Broslunas CMS to your GitHub account and manage your repositories.",
+};
 
 export default function InstallationPage() {
   return (

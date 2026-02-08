@@ -1,3 +1,10 @@
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Cookie Policy",
+  description: "Learn about how we use cookies to improve your experience on Broslunas CMS.",
+};
+
 export default function CookiesPage() {
   return (
     <div className="container mx-auto px-4 py-16 max-w-3xl">

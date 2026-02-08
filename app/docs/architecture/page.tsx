@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button"
 import { Link } from "next-view-transitions"
 import { ChevronRight, ChevronLeft, Server, GitBranch, Database, ShieldCheck, Cpu } from "lucide-react"
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "System Architecture",
+  description: "Learn about the technical architecture of Broslunas CMS and how it synchronizes with GitHub.",
+};
 
 export default function ArchitecturePage() {
   return (
