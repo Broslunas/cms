@@ -34,6 +34,8 @@ export function InstallationWarning({ initiallyInstalled }: StatusCheckProps) {
         headers: { 'Cache-Control': 'no-store' }
       });
       
+      if (res.status === 401) return;
+      
       if (!res.ok) throw new Error("Error checking status");
       
       const data = await res.json();
