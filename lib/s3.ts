@@ -47,6 +47,7 @@ export async function getS3Client(userId: string, repoId?: string, forceDefault:
             secretKey: globalSettings.s3SecretKey,
             bucket: globalSettings.s3Bucket,
             publicUrl: globalSettings.s3PublicUrl,
+            optimizeImages: globalSettings.s3OptimizeImages,
           };
         }
       }
@@ -62,6 +63,7 @@ export async function getS3Client(userId: string, repoId?: string, forceDefault:
             secretKey: globalSettings.s3SecretKey,
             bucket: globalSettings.s3Bucket,
             publicUrl: globalSettings.s3PublicUrl,
+            optimizeImages: globalSettings.s3OptimizeImages,
           };
         }
     }
@@ -78,6 +80,7 @@ export async function getS3Client(userId: string, repoId?: string, forceDefault:
         secretKey: globalSettings.s3SecretKey,
         bucket: globalSettings.s3Bucket,
         publicUrl: globalSettings.s3PublicUrl,
+        optimizeImages: globalSettings.s3OptimizeImages,
       };
     }
   }
@@ -112,6 +115,7 @@ export async function getS3Client(userId: string, repoId?: string, forceDefault:
     bucket: s3Settings.bucket,
     publicUrl: s3Settings.publicUrl,
     endpoint: s3Settings.endpoint,
-    isLimited
+    isLimited,
+    optimizeImages: s3Settings.optimizeImages || false
   }
 }

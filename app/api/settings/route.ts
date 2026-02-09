@@ -34,6 +34,7 @@ export async function GET(req: Request) {
         s3SecretKey: settings.s3SecretKey || null,
         s3Bucket: settings.s3Bucket || null,
         s3PublicUrl: settings.s3PublicUrl || null,
+        s3OptimizeImages: settings.s3OptimizeImages || false,
         githubCommitStrategy: settings.githubCommitStrategy || "bot", // Default to bot as recommended
     });
 
@@ -58,6 +59,7 @@ export async function PATCH(req: Request) {
         s3SecretKey,
         s3Bucket,
         s3PublicUrl,
+        s3OptimizeImages,
         githubCommitStrategy
     } = await req.json();
 
@@ -73,6 +75,7 @@ export async function PATCH(req: Request) {
     if (s3SecretKey !== undefined) update.s3SecretKey = s3SecretKey;
     if (s3Bucket !== undefined) update.s3Bucket = s3Bucket;
     if (s3PublicUrl !== undefined) update.s3PublicUrl = s3PublicUrl;
+    if (s3OptimizeImages !== undefined) update.s3OptimizeImages = s3OptimizeImages;
     if (githubCommitStrategy !== undefined) update.githubCommitStrategy = githubCommitStrategy;
 
     await userCollection.updateOne(

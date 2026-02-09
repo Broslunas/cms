@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
@@ -17,6 +18,7 @@ export function StorageForm() {
     s3SecretKey: "",
     s3Bucket: "",
     s3PublicUrl: "",
+    s3OptimizeImages: false,
   })
 
   useEffect(() => {
@@ -32,6 +34,7 @@ export function StorageForm() {
             s3SecretKey: data.s3SecretKey || "",
             s3Bucket: data.s3Bucket || "",
             s3PublicUrl: data.s3PublicUrl || "",
+            s3OptimizeImages: data.s3OptimizeImages || false,
           })
         }
       } catch (error) {
@@ -56,6 +59,7 @@ export function StorageForm() {
       s3SecretKey: formData.get("s3SecretKey") as string,
       s3Bucket: formData.get("s3Bucket") as string,
       s3PublicUrl: formData.get("s3PublicUrl") as string,
+      s3OptimizeImages: settings.s3OptimizeImages,
     }
 
     try {
@@ -161,6 +165,20 @@ export function StorageForm() {
           <p className="text-[0.8rem] text-muted-foreground">
             Used to generate public URLs for uploaded files.
           </p>
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-2 rounded-lg border p-4">
+        <Switch
+            id="s3OptimizeImages"
+            checked={settings.s3OptimizeImages}
+            onCheckedChange={(checked) => setSettings(prev => ({ ...prev, s3OptimizeImages: checked }))}
+        />
+        <div className="space-y-0.5">
+            <Label htmlFor="s3OptimizeImages">Optimize Images</Label>
+            <p className="text-sm text-muted-foreground">
+                Automatically resize and compress images before uploading to your S3 bucket.
+            </p>
         </div>
       </div>
 

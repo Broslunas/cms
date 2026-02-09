@@ -1617,6 +1617,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
             imageSrc={imageEditorFile.objectUrl}
             onSave={handleImageEditorSave}
             fileName={imageEditorFile.file.name}
+            isLimited={isLimitedStorage}
           />
       )}
 

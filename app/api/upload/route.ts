@@ -25,18 +25,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const { s3Client, bucket, publicUrl, endpoint, isLimited } = await getS3Client(session.user.id, repoId || undefined, useDefault);
+    const { s3Client, bucket, publicUrl, endpoint, isLimited, optimizeImages } = await getS3Client(session.user.id, repoId || undefined, useDefault);
 
     let buffer = Buffer.from(await file.arrayBuffer());
     let contentType = file.type;
     let fileExtension = file.name.split(".").pop();
     let originalName = file.name;
 
+    // Determine if we should optimize
+    // limited users MUST optimize (and must be images)
+    // custom users OPTIONALLY optimize (if they enabled it and it is an image)
+    let shouldOptimize = false;
     if (isLimited) {
         if (!contentType.startsWith("image/")) {
             return NextResponse.json({ error: "Free storage only supports images." }, { status: 400 });
         }
+        shouldOptimize = true;
+    } else if (optimizeImages && contentType.startsWith("image/")) {
+        shouldOptimize = true;
+    }
 
+    if (shouldOptimize) {
         // Process with Sharp
         try {
             let image = sharp(buffer);
@@ -65,50 +74,55 @@ export async function POST(req: Request) {
                 }
             }
 
-            // Add "Broslunas CMS" watermark
-            const fontSize = Math.max(20, Math.floor(currentWidth * 0.03));
-            const margin = Math.floor(fontSize * 1.0);
-            
-            const watermarkSvg = `
-                <svg width="${currentWidth}" height="${currentHeight}" viewBox="0 0 ${currentWidth} ${currentHeight}" xmlns="http://www.w3.org/2000/svg">
-                    <style>
-                        .watermark { 
-                            fill: rgba(255, 255, 255, 0.9); 
-                            font-size: ${fontSize}px; 
-                            font-family: Arial, sans-serif; 
-                            font-weight: bold;
-                            stroke: rgba(0,0,0,0.5);
-                            stroke-width: ${Math.max(1, fontSize * 0.05)}px;
-                        }
-                    </style>
-                    <text x="${currentWidth - margin}" y="${currentHeight - margin}" text-anchor="end" class="watermark">Broslunas CMS</text>
-                </svg>
-            `;
+            // Add "Broslunas CMS" watermark ONLY for limited users
+            if (isLimited) {
+                const fontSize = Math.max(20, Math.floor(currentWidth * 0.03));
+                const margin = Math.floor(fontSize * 1.0);
+                
+                const watermarkSvg = `
+                    <svg width="${currentWidth}" height="${currentHeight}" viewBox="0 0 ${currentWidth} ${currentHeight}" xmlns="http://www.w3.org/2000/svg">
+                        <style>
+                            .watermark { 
+                                fill: rgba(255, 255, 255, 0.9); 
+                                font-size: ${fontSize}px; 
+                                font-family: Arial, sans-serif; 
+                                font-weight: bold;
+                                stroke: rgba(0,0,0,0.5);
+                                stroke-width: ${Math.max(1, fontSize * 0.05)}px;
+                            }
+                        </style>
+                        <text x="${currentWidth - margin}" y="${currentHeight - margin}" text-anchor="end" class="watermark">Broslunas CMS</text>
+                    </svg>
+                `;
 
-            image = image.composite([{
-                input: Buffer.from(watermarkSvg),
-                top: 0,
-                left: 0,
-                blend: 'over'
-            }]);
+                image = image.composite([{
+                    input: Buffer.from(watermarkSvg),
+                    top: 0,
+                    left: 0,
+                    blend: 'over'
+                }]);
+            }
 
             // Initial conversion attempt
             let outputBuffer = await image.webp({ quality: 80 }).toBuffer();
             
-            // If still too large, try reducing quality
-            if (outputBuffer.byteLength > 300 * 1024) {
-                 outputBuffer = await image.webp({ quality: 60 }).toBuffer();
-            }
+            // If limited, enforce strict size limits
+            if (isLimited) {
+                // If still too large, try reducing quality
+                if (outputBuffer.byteLength > 300 * 1024) {
+                     outputBuffer = await image.webp({ quality: 60 }).toBuffer();
+                }
 
-            // If STILL too large, try aggressive reduction
-            if (outputBuffer.byteLength > 300 * 1024) {
-                 outputBuffer = await image.resize({ width: 1280, height: 1280, fit: 'inside' })
-                                           .webp({ quality: 50 }).toBuffer();
-            }
+                // If STILL too large, try aggressive reduction
+                if (outputBuffer.byteLength > 300 * 1024) {
+                     outputBuffer = await image.resize({ width: 1280, height: 1280, fit: 'inside' })
+                                               .webp({ quality: 50 }).toBuffer();
+                }
 
-            // Final check
-            if (outputBuffer.byteLength > 300 * 1024) {
-                return NextResponse.json({ error: "Image could not be compressed to under 300KB. Please upload a smaller image." }, { status: 400 });
+                // Final check
+                if (outputBuffer.byteLength > 300 * 1024) {
+                    return NextResponse.json({ error: "Image could not be compressed to under 300KB. Please upload a smaller image." }, { status: 400 });
+                }
             }
 
             buffer = outputBuffer as any;

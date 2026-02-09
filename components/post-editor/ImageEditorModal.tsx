@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from 'react'
 import Cropper from 'react-easy-crop'
 import Modal from '../Modal'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label' 
 
 import getCroppedImg from '@/lib/cropImage'
 import { RotateCw, ZoomIn, Check, X, RotateCcw, FileDown } from 'lucide-react'
@@ -12,6 +14,7 @@ interface ImageEditorModalProps {
   imageSrc: string
   onSave: (croppedBlob: Blob) => void
   fileName: string
+  isLimited?: boolean
 }
 
 export default function ImageEditorModal({
@@ -20,11 +23,13 @@ export default function ImageEditorModal({
   imageSrc,
   onSave,
   fileName,
+  isLimited = false,
 }: ImageEditorModalProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [rotation, setRotation] = useState(0)
   const [zoom, setZoom] = useState(1)
   const [quality, setQuality] = useState(0.8)
+  const [shouldCompress, setShouldCompress] = useState(true)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
   const [aspect, setAspect] = useState<number | undefined>(undefined) // Free by default
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
@@ -62,7 +67,9 @@ export default function ImageEditorModal({
             croppedAreaPixels,
             rotation,
             { horizontal: false, vertical: false }, // flip
-            { quality, type: 'image/jpeg' } 
+            shouldCompress 
+                ? { quality, type: 'image/jpeg' } 
+                : { quality: 1, type: 'image/png' } // Lossless if not compressing
           )
           setPreviewBlob(blob)
           if (blob) {
@@ -133,7 +140,9 @@ export default function ImageEditorModal({
             croppedAreaPixels!,
             rotation,
              { horizontal: false, vertical: false },
-            { quality, type: 'image/jpeg' }
+            shouldCompress 
+                ? { quality, type: 'image/jpeg' } 
+                : { quality: 1, type: 'image/png' }
           )
           if(blob) onSave(blob);
       }
@@ -372,21 +381,44 @@ export default function ImageEditorModal({
             </div>
 
             {/* Compression Control */}
-            <div className="space-y-3 bg-muted/30 p-3 rounded-lg border border-border">
-                 <label className="text-xs font-medium text-muted-foreground flex items-center justify-between">
-                    <span className="flex items-center gap-2"><FileDown className="w-3 h-3"/> Compression (Quality)</span>
-                    <span className="font-mono">{Math.round(quality * 100)}%</span>
-                </label>
-                <input
-                    type="range"
-                    value={quality}
-                    min={0.1}
-                    max={1}
-                    step={0.05}
-                    aria-labelledby="Quality"
-                    onChange={(e) => setQuality(Number(e.target.value))}
-                    className="w-full h-1.5 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
-                />
+            <div className={`space-y-3 bg-muted/30 p-3 rounded-lg border border-border transition-all ${!shouldCompress ? 'opacity-50 grayscale' : ''}`}>
+                 
+                 <div className="flex items-center justify-between mb-4">
+                    <Label htmlFor="compress-toggle" className="text-xs font-medium text-foreground flex items-center gap-2">
+                        <FileDown className="w-3 h-3"/> 
+                        Enable Compression
+                    </Label>
+                    {!isLimited ? (
+                        <Switch 
+                            id="compress-toggle"
+                            checked={shouldCompress}
+                            onCheckedChange={setShouldCompress}
+                            className="scale-75 origin-right"
+                        />
+                    ) : (
+                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Required (Free Tier)</span>
+                    )}
+                 </div>
+
+                 {shouldCompress && (
+                   <>
+                    <label className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+                        <span className="flex items-center gap-2">Quality</span>
+                        <span className="font-mono">{Math.round(quality * 100)}%</span>
+                    </label>
+                    <input
+                        type="range"
+                        value={quality}
+                        min={0.1}
+                        max={1}
+                        step={0.05}
+                        aria-labelledby="Quality"
+                        onChange={(e) => setQuality(Number(e.target.value))}
+                        className="w-full h-1.5 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                   </>
+                 )}
+                 
                 <div className="flex justify-between text-[10px] text-muted-foreground pt-1">
                     <div className="flex flex-col">
                         <span>Original</span>
@@ -397,9 +429,10 @@ export default function ImageEditorModal({
                         <span className={`font-mono font-medium ${previewBlob && previewBlob.size < originalSize ? 'text-green-500' : 'text-foreground'}`}>
                             {previewBlob ? formatSize(previewBlob.size) : 'Calculating...'}
                         </span>
+                        {!shouldCompress && <span className="text-[9px] text-indigo-400">Lossless mode (PNG)</span>}
                     </div>
                 </div>
-                 {previewBlob && originalSize > 0 && (
+                 {shouldCompress && previewBlob && originalSize > 0 && (
                     <div className="text-[10px] text-center text-green-600 dark:text-green-400 font-medium bg-green-500/10 rounded px-1 py-0.5 mt-1">
                         -{Math.round(((originalSize - previewBlob.size) / originalSize) * 100)}% saved
                     </div>
