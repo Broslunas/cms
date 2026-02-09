@@ -50,18 +50,19 @@ export async function checkAppInstalled(accessToken: string): Promise<boolean> {
     }
 
     // Check if our app is in the list
-    const ourApp = (installations as any).installations?.find(
-      (installation: any) => installation.app_slug === appName
+    // We match against app_slug case-insensitively
+    const installedApp = (installations as any).installations?.find(
+      (installation: any) => installation.app_slug.toLowerCase() === appName.toLowerCase()
     );
 
-    if (ourApp) {
-      console.log(`App "${appName}" found with installation ID: ${ourApp.id}`);
+    if (installedApp) {
+      // console.log(`App "${appName}" found with installation ID: ${installedApp.id}`);
+      return true;
     } else {
       const availableApps = (installations as any).installations?.map((i: any) => i.app_slug).join(', ') || 'none';
-      console.log(`App "${appName}" not found in user installations. Available apps: ${availableApps}`);
+      console.log(`[GitHub App] "${appName}" not found. User has: ${availableApps}`);
+      return false;
     }
-
-    return !!ourApp;
   } catch (error: any) {
     if (error.status === 401) {
       console.error('Error checking app installation: Unauthorized (401). This typically means the access token is invalid or missing the required "read:org" scope.');

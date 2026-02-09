@@ -128,7 +128,7 @@ export async function PUT(request: NextRequest) {
         {
           error: "No tienes permisos para hacer commits en GitHub.",
           code: "PERMISSION_ERROR",
-          details: "Resource not accessible by integration. Verify that you have accepted the repository invitation on GitHub or that the GitHub App has permissions."
+          details: "Es probable que la GitHub App no esté instalada en este repositorio específico. Ve a la configuración de la App en GitHub y asegúrate de que este repositorio esté seleccionado."
         },
         { status: 403 }
       );
