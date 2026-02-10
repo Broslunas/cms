@@ -306,7 +306,7 @@ export default function RepoManualButton({ repoId, className, variant = "outline
           {loading ? (
             <div className="flex flex-col items-center justify-center h-48 space-y-4">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-muted-foreground text-sm">Fetching manual...</p>
+              <p className="text-muted-foreground text-sm">Loading manual...</p>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-48 space-y-4 text-muted-foreground border-2 border-dashed border-muted rounded-xl bg-muted/30">
