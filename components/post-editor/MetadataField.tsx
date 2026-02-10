@@ -3,6 +3,7 @@
 import { JsonFieldEditor } from "./JsonFieldEditor";
 import { TranscriptionEditor } from "./TranscriptionEditor";
 import { SectionsEditor } from "./SectionsEditor";
+import { ClipsEditor } from "./ClipsEditor";
 import { ArrayEditor } from "./ArrayEditor";
 import { SocialLinksEditor } from "../SocialLinksEditor";
 import { DateTimePicker } from "./DateTimePicker";
@@ -211,6 +212,25 @@ export function MetadataField({
                   </button>
               </div>
               <SectionsEditor fieldKey={key} value={value} onChange={(val) => onUpdate(key, val)} onDelete={() => onDelete(key)} metadata={metadata} />
+           </div>
+        )
+      }
+
+      const isClips = (value.length > 0 &&
+                       value.every(item => typeof item === 'object' && item !== null && 'title' in item && 'url' in item) &&
+                       value.some(item => typeof item.url === 'string' && (item.url.includes('youtube.com') || item.url.includes('youtu.be')))) ||
+                      (['clips', 'shorts', 'reels', 'highlights'].includes(key.toLowerCase()));
+
+      if (isClips) {
+        return (
+           <div key={key}>
+              <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-foreground capitalize">{key}</label>
+                  <button onClick={() => onDelete(key)} className="text-muted-foreground hover:text-destructive transition-colors p-1" title={`Delete field ${key}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+              </div>
+              <ClipsEditor fieldKey={key} value={value} onChange={(val) => onUpdate(key, val)} onDelete={() => onDelete(key)} />
            </div>
         )
       }
