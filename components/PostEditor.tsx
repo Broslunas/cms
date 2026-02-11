@@ -411,6 +411,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
     if (newFieldType === "date") initialValue = new Date().toISOString().split('T')[0];
     if (newFieldType === "transcription") initialValue = [];
     if (newFieldType === "sections") initialValue = [];
+    if (newFieldType === "clips") initialValue = [];
 
     updateMetadata(newFieldName, initialValue);
     setNewFieldName("");
@@ -974,7 +975,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
       >
         <div className="space-y-4">
           {/* Global Suggestions for new features */}
-          {(!metadata.transcription || !metadata.sections) && (
+          {(!metadata.transcription || !metadata.sections || !metadata.clips) && (
             <div className="bg-indigo-500/5 p-3 rounded-md border border-indigo-500/20 mb-4">
                 <p className="text-xs font-medium text-indigo-500 mb-2 flex items-center gap-2">
                     <Wand2 className="w-3 h-3" />
@@ -1003,6 +1004,18 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
                             }`}
                         >
                             sections <span className="opacity-50 text-[10px]">(chapters)</span>
+                        </button>
+                    )}
+                    {!metadata.clips && (
+                        <button
+                            onClick={() => { setNewFieldName("clips"); setNewFieldType("clips"); }}
+                            className={`px-2 py-1 text-xs border rounded transition-colors flex items-center gap-1 ${
+                                newFieldName === "clips" 
+                                    ? "bg-indigo-500/10 border-indigo-500 text-indigo-500" 
+                                    : "bg-background border-border text-foreground hover:border-indigo-500/50"
+                            }`}
+                        >
+                            clips <span className="opacity-50 text-[10px]">(shorts)</span>
                         </button>
                     )}
                 </div>
@@ -1066,6 +1079,7 @@ export default function PostEditor({ post, schema, isNew = false, templatePosts 
               <option value="date">Date</option>
               <option value="transcription">Transcription (Deepgram)</option>
               <option value="sections">Sections (Chapters)</option>
+              <option value="clips">Clips (Shorts/Reels)</option>
             </select>
           </div>
         </div>
